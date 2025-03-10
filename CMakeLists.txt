@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 3.6)
+cmake_minimum_required(VERSION 3.10)
 
 project(LandRobotController)
 
+
+set(CMAKE_PREFIX_PATH "C:/Users/alex1/git/vcpkg/installed/x64-windows")
 set(Qt5_DIR C:\\Qt\\5.15.2\\msvc2019_64\\lib\\cmake\\Qt5)
+
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOUIC ON)
@@ -36,8 +39,14 @@ ${CMAKE_SOURCE_DIR}/src/Comm.cpp
 ${CMAKE_SOURCE_DIR}/src/VideoWindow.h
 ${CMAKE_SOURCE_DIR}/src/VideoWindow.cpp
 
-${CMAKE_SOURCE_DIR}/src/VideoWindowRender.h
-${CMAKE_SOURCE_DIR}/src/VideoWindowRender.cpp
+${CMAKE_SOURCE_DIR}/src/VideoWindowOverlay.h
+${CMAKE_SOURCE_DIR}/src/VideoWindowOverlay.cpp
+
+${CMAKE_SOURCE_DIR}/src/VideoProcessing.h
+${CMAKE_SOURCE_DIR}/src/VideoProcessing.cpp
+
+${CMAKE_SOURCE_DIR}/src/RobotData.h
+${CMAKE_SOURCE_DIR}/src/RobotData.cpp
 
 ${CMAKE_SOURCE_DIR}/src/JoystickBridge.h
 ${CMAKE_SOURCE_DIR}/src/JoystickBridge.cpp
@@ -47,25 +56,35 @@ ${CMAKE_SOURCE_DIR}/src/main.cpp
 
 find_package(Threads REQUIRED)
 find_package(Qt5 COMPONENTS Core Gui Widgets Network OpenGL REQUIRED)
-
-find_package(SDL2 REQUIRED)
-
+find_package(SDL2 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
-set(OpenCV_ROOT "${VCPKG_INSTALLED_DIR}/x64-windows-static/share/opencv4")
 find_package(OpenCV REQUIRED COMPONENTS core imgproc video highgui videoio)
+set(OpenCV_LIB_DIRS "C:\\Users\\alex1\\git\\vcpkg\\installed\\x64-windows\\lib")
+set(OPENCV_CUDA_LIBS
+    opencv_cudaimgproc
+    opencv_cudaarithm
+    opencv_cudawarping
+)
+find_package(CUDA REQUIRED)
+
+
+# Estrarre la versione major e minor
+string(REGEX MATCH "([0-9]+)\\.([0-9]+)" CUDA_VERSION_MATCH ${CUDA_VERSION_STRING})
+set(CUDA_VERSION_MAJOR ${CMAKE_MATCH_1})
+set(CUDA_VERSION_MINOR ${CMAKE_MATCH_2})
+
 
 if (SDL2_FOUND)
     target_include_directories(LandRobotController PUBLIC ${SDL2_INCLUDE_DIRS})
     target_link_libraries(LandRobotController ${SDL2_LIBRARIES})
     add_compile_definitions(SDL_SUPPORTED)
-    message(STATUS "SDL2_FOUND: ${SDL2_FOUND}")
-    message(STATUS "SDL2_INCLUDE_DIRS: ${SDL2_INCLUDE_DIRS}")
-    message(STATUS "SDL2_LIBRARIES: ${SDL2_LIBRARIES}")
 endif()
-message(STATUS "OpenCV_FOUND: ${OpenCV_FOUND}")
-message(STATUS "OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
-message(STATUS "OpenCV_LIBRARIES: ${OpenCV_LIBRARIES}")
+
+set(CUDA_LIBS_DIR "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v${CUDA_VERSION_MAJOR}.${CUDA_VERSION_MINOR}\\lib\\x64")
+set(Cuda_LIBS "cuda.lib" "cudart.lib" "nppc.lib")
 
 
-target_include_directories(LandRobotController PUBLIC ${CMAKE_SOURCE_DIR}/src/ ${CMAKE_SOURCE_DIR}/3rdparty/QJoysticks/ ${OpenCV_INCLUDE_DIRS})
-target_link_libraries(LandRobotController Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Network Qt5::OpenGL OpenGL::GL ${OpenCV_LIBS})
+target_link_directories(LandRobotController PUBLIC ${CUDA_LIBS_DIR} ${OpenCV_LIB_DIRS})
+
+target_include_directories(LandRobotController PUBLIC ${CMAKE_SOURCE_DIR}/src/ ${CMAKE_SOURCE_DIR}/3rdparty/QJoysticks/ ${OpenCV_INCLUDE_DIRS} ${CUDA_INCLUDE_DIRS})
+target_link_libraries(LandRobotController Qt5::Core Qt5::Gui Qt5::Widgets Qt5::Network Qt5::OpenGL OpenGL::GL ${OPENCV_CUDA_LIBS} ${OpenCV_LIBS} ${Cuda_LIBS})

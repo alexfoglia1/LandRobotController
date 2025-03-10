@@ -1,4 +1,0 @@
-#ifndef VIDEOWINDOWRENDER_H
-#define VIDEOWINDOWRENDER_H
-
-#endif

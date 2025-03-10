@@ -68,7 +68,11 @@ void JoystickBridge::onButtonEvent(const QJoystickButtonEvent& evt)
 {
 	//printf("%d\n", evt.button);
 
-	if (evt.button == 13 && evt.pressed)
+	if (evt.button == 0 && evt.pressed)
+	{
+		emit emergencyStop();
+	}
+	else if (evt.button == 13 && evt.pressed)
 	{
 		if (_servoData <= 1800)
 		{
@@ -92,10 +96,10 @@ void JoystickBridge::onAxisEvent(const QJoystickAxisEvent& evt)
 	qreal evtValue = saturate(evt.value, -1.0, 1.0);
 	//printf("evt.axis(%d)\n", evt.axis);
 
-	bool isValidAxisEvent = (evt.axis == 5 || evt.axis == 2 || evt.axis == 0);
+	bool isValidAxisEvent = (evt.axis == 5 || evt.axis == 2 || evt.axis == 0 || evt.axis == 4);
 	if (isValidAxisEvent)
 	{
-		quint16 throttle = _throttle;
+		qint16 throttle = _throttle;
 		qint16 x = _x;
 		quint16 servoData = _servoData;
 
@@ -109,21 +113,36 @@ void JoystickBridge::onAxisEvent(const QJoystickAxisEvent& evt)
 			if (_throttle != throttle)
 				emit updatedThrottle(_throttle);
 		}
-		else if (evt.axis == 2)
+		else if (evt.axis == 0)
 		{
-			qreal fSignal = deadCenterZone(evtValue, 0.1, 0, -32767, 32768);
-			_x = (qint16)(fSignal);
+			//printf("evtValue(%f)\t", evtValue);
+			qreal fSignal = deadCenterZone(evtValue, 0.1, 1500.0, -1.0, 1.0);
+			//printf("after dcz(%f)\t", fSignal);
+			fSignal = mapValue(fSignal, 1000.0, 2000.0, -180.0, 180.0);
+			//printf("to angle(%f)\t", fSignal);
+			_x = (qint16)(fSignal); 
+			//printf("_x(%d)\n", _x);
 
 			if (_x != x)
 				emit updateXY(_x, _y);
 		}
-		else if (evt.axis == 0)
+		else if (evt.axis == 2)
 		{
 			qreal fSignal = deadCenterZone(-evtValue, 0.1, 1500.0, -1.0, 1.0);
 			_servoData = (qint16)(fSignal);
 
 			if (_servoData != servoData)
 				emit updatedServo(_servoData);
+		}
+		else if (evt.axis == 4)
+		{
+			if (evtValue < 0) evtValue = 0;
+			qreal fSignal = mapValue(evtValue, 0, 1.0, 0, 255);// deadCenterZone(-evtValue, 0.1, 1500.0, -1.0, 1.0);
+
+			_throttle = (qint16)(fSignal);
+
+			if (_throttle != throttle)
+				emit updatedThrottle(-_throttle);
 		}
 	}
 }

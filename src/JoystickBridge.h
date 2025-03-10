@@ -13,6 +13,7 @@ signals:
 	void updatedServo(quint16 servo);
 	void updatedThrottle(qint16 throttle);
 	void updateXY(qint16 x, qint16 y);
+	void emergencyStop();
 private:
 	QJoysticks* _js;
 
