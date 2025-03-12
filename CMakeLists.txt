@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(LandRobotController)
+project(LandRobotController LANGUAGES CXX CUDA)
 
+#add_compile_definitions(__HOTSPOT__)
 
 set(CMAKE_PREFIX_PATH "C:/Users/alex1/git/vcpkg/installed/x64-windows")
 set(Qt5_DIR C:\\Qt\\5.15.2\\msvc2019_64\\lib\\cmake\\Qt5)
@@ -50,6 +51,9 @@ ${CMAKE_SOURCE_DIR}/src/RobotData.cpp
 
 ${CMAKE_SOURCE_DIR}/src/JoystickBridge.h
 ${CMAKE_SOURCE_DIR}/src/JoystickBridge.cpp
+
+${CMAKE_SOURCE_DIR}/src/DigitalZoom.h
+${CMAKE_SOURCE_DIR}/src/DigitalZoom.cu
  
 ${CMAKE_SOURCE_DIR}/src/main.cpp
 )

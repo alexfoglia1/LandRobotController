@@ -1,4 +1,5 @@
 #include "JoystickBridge.h"
+#include "DigitalZoom.h"
 
 #ifdef __linux__
 #include <cmath>
@@ -12,6 +13,12 @@ JoystickBridge::JoystickBridge(QObject* parent) : QObject(parent)
 	_y = 0;
 	_servoData = 1500;
 	_throttle = 0;
+	_numButtons = 32;
+	_zoomStep = 0;
+	_buttonsState = new bool[_numButtons];
+
+
+	memset(&_buttonsState, 0x00, sizeof(bool));
 
 	connect(_js, &QJoysticks::buttonEvent, this, &JoystickBridge::onButtonEvent);
 	connect(_js, &QJoysticks::axisEvent, this, &JoystickBridge::onAxisEvent);
@@ -66,27 +73,19 @@ qreal JoystickBridge::mapValue(qreal value, qreal fromMin, qreal fromMax, qreal 
 
 void JoystickBridge::onButtonEvent(const QJoystickButtonEvent& evt)
 {
-	//printf("%d\n", evt.button);
+	if (evt.pressed)
+	{
+		_buttonsState[evt.button] = !_buttonsState[evt.button];
+	}
 
-	if (evt.button == 0 && evt.pressed)
+	switch (evt.button)
 	{
-		emit emergencyStop();
-	}
-	else if (evt.button == 13 && evt.pressed)
-	{
-		if (_servoData <= 1800)
-		{
-			_servoData += 200;
-			emit updatedServo(_servoData);
-		}
-	}
-	else if (evt.button == 14 && evt.pressed)
-	{
-		if (_servoData >= 1200)
-		{
-			_servoData -= 200;
-			emit updatedServo(_servoData);
-		}
+	case 0:  if (evt.pressed) { emit emergencyStop(); } break;
+	case 11: if (evt.pressed) { _zoomStep += 1; _zoomStep %= (static_cast<quint8>(DigitalZoomStep::ZOOM_STEPS) + 1); emit setZoomStep(_zoomStep); } break;
+	case 12: if (evt.pressed) { _zoomStep = _zoomStep == 0 ? static_cast<quint8>(DigitalZoomStep::ZOOM_STEPS) : _zoomStep - 1; emit setZoomStep(_zoomStep); } break;
+	case 13: emit setImageEnhancementAlgorithm(VideoProcessing::Algorithm::CLAHE, _buttonsState[evt.button]); break;
+	case 14: emit setImageEnhancementAlgorithm(VideoProcessing::Algorithm::BILATERAL_FILTER, _buttonsState[evt.button]); break;
+	default: break;
 	}
 }
 

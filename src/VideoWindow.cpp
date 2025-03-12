@@ -31,6 +31,9 @@ VideoWindow::VideoWindow(QWidget* parent)
 		_timer.start(10);
 	}
 
+	_lastWidth = 640;
+	_lastHeight = 480;
+
 	_processing = new VideoProcessing(VideoProcessing::Format::BGR, VideoProcessing::Format::RGB);
 }
 
@@ -57,18 +60,25 @@ void VideoWindow::initializeGL()
 
 void VideoWindow::updateFrame()
 {
+	_videoFrame = cv::Mat();
+
 	if (_cap.isOpened())
 	{
 		_cap >> _videoFrame;
-
-		if (!_videoFrame.empty())
-		{
-			_processing->process(_videoFrame, _videoFrame);
-
-			_overlay.drawRobotData(_videoFrame, _robotData);
-			update();
-		}
 	}
+
+	if (_videoFrame.empty())
+	{
+		_videoFrame = cv::Mat(_lastHeight, _lastWidth, CV_8UC3);
+		
+	}
+	else
+	{
+		_processing->process(_videoFrame, _videoFrame);
+	}
+
+	_overlay.drawRobotData(_videoFrame, _robotData);
+	update();
 }
 
 
@@ -197,6 +207,18 @@ void VideoWindow::ReceiveServo(quint16 servo)
 
 void VideoWindow::EmergencyStop()
 {
-	_overlay.toggleForeground(_videoFrame, _robotData);
+	_overlay.toggleForeground();
 	update();
+}
+
+
+void VideoWindow::SetAlgorithmEnabled(VideoProcessing::Algorithm algo, bool enabled)
+{
+	_processing->setAlgorithmEnabled(algo, enabled);
+}
+
+
+void VideoWindow::SetDigitalZoomStep(quint8 zoomStep)
+{
+	_processing->setDigitalZoomStep(zoomStep);
 }

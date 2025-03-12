@@ -9,7 +9,9 @@ VideoWindowOverlay::VideoWindowOverlay() :
 	_marginW(10),
 	_dX(10),
 	_dY(20),
-	_foreground(0, 255, 0)
+	_foreground(0, 255, 0),
+	_algoEnabled(VideoProcessing::Algorithm::ALL_OFF),
+	_zoomStep(DigitalZoomStep::ZOOM_2X)
 {
 
 }
@@ -26,7 +28,7 @@ void VideoWindowOverlay::drawRobotData(cv::Mat& frame, const RobotData& robotDat
 }
 
 
-void VideoWindowOverlay::toggleForeground(cv::Mat& frame, const RobotData& robotData)
+void VideoWindowOverlay::toggleForeground()
 {
 	if (_foreground == cv::Scalar(0, 255, 0))
 	{
@@ -36,10 +38,17 @@ void VideoWindowOverlay::toggleForeground(cv::Mat& frame, const RobotData& robot
 	{
 		_foreground = cv::Scalar(0, 255, 0);
 	}
-
-	drawRobotData(frame, robotData);
 }
 
+void VideoWindowOverlay::setEnhancementState(const VideoProcessing::Algorithm algoEnabled)
+{
+	_algoEnabled = algoEnabled;
+}
+
+void VideoWindowOverlay::setZoomState(const DigitalZoomStep zoomStep)
+{
+	_zoomStep = zoomStep;
+}
 
 inline void VideoWindowOverlay::drawImuData(cv::Mat& frame, const RobotData& robotData, cv::Point coord)
 {

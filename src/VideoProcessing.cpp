@@ -25,6 +25,9 @@ VideoProcessing::VideoProcessing(Format inputFormat, Format outputFormat)
 {
 	_inputFormat = inputFormat;
 	_outputFormat = outputFormat;
+
+	_algorithmsEnabled = static_cast<quint32>(VideoProcessing::Algorithm::CLAHE);
+	_zoomStep = DigitalZoomStep::ZOOM_2X;
 }
 
 
@@ -53,7 +56,63 @@ void VideoProcessing::process(cv::Mat& input, cv::Mat& output)
 		cv::cuda::cvtColor(gpuMat, gpuMat, cv::COLOR_RGBA2BGRA);
 	}
 
+	if (_algorithmsEnabled & static_cast<quint32>(VideoProcessing::Algorithm::DIGITAL_ZOOM))
+	{
+		digitalZoom(gpuMat, _zoomStep);
+		cudaDeviceSynchronize();
+	}
+
+	if (_algorithmsEnabled & static_cast<quint32>(VideoProcessing::Algorithm::BILATERAL_FILTER))
+	{
+		cv::cuda::bilateralFilter(gpuMat, gpuMat, 9, 75, 75);
+	}
+
+	if (_algorithmsEnabled & static_cast<quint32>(VideoProcessing::Algorithm::CLAHE))
+	{
+		std::vector<cv::cuda::GpuMat> channels(3);
+		cv::cuda::split(gpuMat, channels);
+
+		cv::Ptr<cv::cuda::CLAHE> clahe = cv::cuda::createCLAHE(2.0, cv::Size(8, 8));
+
+		clahe->apply(channels[0], channels[0]);
+		clahe->apply(channels[1], channels[1]);
+		clahe->apply(channels[2], channels[2]);
+
+		cv::cuda::merge(channels, gpuMat);
+	}
+
 	gpuMat.download(output);
+}
+
+
+void VideoProcessing::setAlgorithmEnabled(VideoProcessing::Algorithm algo, bool enabled)
+{
+	quint32 mask = 0;
+	if (enabled)
+	{
+		mask = static_cast<quint32>(algo);
+		_algorithmsEnabled |= mask;
+	}
+	else
+	{
+		mask = ~(static_cast<quint32>(algo));
+		_algorithmsEnabled &= mask;
+	}
+}
+
+
+void VideoProcessing::setDigitalZoomStep(quint8 zoomStep)
+{
+	if (zoomStep == 0 || zoomStep > static_cast<quint8>(DigitalZoomStep::ZOOM_STEPS))
+	{
+		setAlgorithmEnabled(VideoProcessing::Algorithm::DIGITAL_ZOOM, false);
+	}
+	else
+	{
+		setAlgorithmEnabled(VideoProcessing::Algorithm::DIGITAL_ZOOM, true);
+
+		_zoomStep = DigitalZoomStep(zoomStep);
+	}
 }
 
 

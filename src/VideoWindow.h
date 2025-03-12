@@ -34,6 +34,8 @@ public slots:
     void ReceiveThrR(quint16 thrR);
     void ReceiveServo(quint16 servo);
     void EmergencyStop();
+    void SetAlgorithmEnabled(VideoProcessing::Algorithm algo, bool enabled);
+    void SetDigitalZoomStep(quint8 zoomStep);
 
 protected:
     void initializeGL() override;
@@ -51,6 +53,8 @@ private:
     RobotData _robotData;
     VideoWindowOverlay _overlay;
     VideoProcessing* _processing;
+    int _lastWidth;
+    int _lastHeight;
 
     void updateTexture(GLuint textureId, GLint internalformat, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
     void drawTexture(GLuint textureId);
