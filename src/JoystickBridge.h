@@ -19,6 +19,10 @@ signals:
 	void emergencyStop();
 	void setImageEnhancementAlgorithm(VideoProcessing::Algorithm algo, bool enabled);
 	void setZoomStep(quint8 zoomStep);
+	void enlargeTrackerRoi();
+	void reduceTrackerRoi();
+	void toggleTracker();
+	void stopTracker();
 
 private:
 	QJoysticks* _js;

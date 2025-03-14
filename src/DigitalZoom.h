@@ -15,6 +15,8 @@ enum class DigitalZoomStep
 	ZOOM_STEPS = ZOOM_16X
 };
 
+float getDigitalZoomScale(DigitalZoomStep zoomStep);
+
 void digitalZoom(cv::cuda::GpuMat& gpuMat, DigitalZoomStep zoomStep);
 
 

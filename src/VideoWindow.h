@@ -9,6 +9,7 @@
 #include "VideoWindowOverlay.h"
 #include "RobotData.h"
 #include "VideoProcessing.h"
+#include "Tracker.h"
 
 
 class VideoWindow : public QOpenGLWidget, protected QOpenGLFunctions {
@@ -17,6 +18,11 @@ class VideoWindow : public QOpenGLWidget, protected QOpenGLFunctions {
 public:
     explicit VideoWindow(QWidget* parent = nullptr);
     ~VideoWindow();
+
+
+signals:
+    void trackerStarted();
+    void targetMoved(int cx, int cy);
 
 public slots:
     void ReceiveGyroX(float gyroX);
@@ -36,6 +42,10 @@ public slots:
     void EmergencyStop();
     void SetAlgorithmEnabled(VideoProcessing::Algorithm algo, bool enabled);
     void SetDigitalZoomStep(quint8 zoomStep);
+    void ToggleTracker();
+    void StopTracker();
+    void EnlargeTrackerRoi();
+    void ReduceTrackerRoi();
 
 protected:
     void initializeGL() override;
@@ -44,6 +54,8 @@ protected:
 
 private slots:
     void updateFrame();  // Slot per aggiornare lo stream
+    void onTrackerAcquireDone();
+    void onTrackerTargetMoved();
 
 private:
     QTimer _timer;         // Timer per aggiornare i frame
@@ -53,6 +65,7 @@ private:
     RobotData _robotData;
     VideoWindowOverlay _overlay;
     VideoProcessing* _processing;
+    Tracker* _tracker;
     int _lastWidth;
     int _lastHeight;
 

@@ -29,6 +29,7 @@ public:
 		BILATERAL_FILTER = 0x00000001,
 		CLAHE            = 0x00000002,
 		DIGITAL_ZOOM	 = 0x00000004,
+		STABILIZATION    = 0x00000008,
 		ALL              = 0xFFFFFFFF,
 	};
 
@@ -37,10 +38,12 @@ public:
 	void process(cv::Mat& input, cv::Mat& output);
 	void setAlgorithmEnabled(Algorithm algo, bool enabled);
 	void setDigitalZoomStep(quint8 zoomStep);
+	quint32 algorithmsEnabled();
 
 private:
 	static QMap<Format, int> _formatToSize;
 	static QMap<Format, int> _formatToCvFormat;
+	cv::cuda::GpuMat _prevGray;
 
 	Format _inputFormat;
 	Format _outputFormat;
@@ -48,6 +51,7 @@ private:
 	DigitalZoomStep _zoomStep;
 
 	void crop(const cv::Mat input, cv::cuda::GpuMat& output);
+	void stabilizeFrame(cv::cuda::GpuMat& frame);
 
 	/** GPU Operations **/
 	

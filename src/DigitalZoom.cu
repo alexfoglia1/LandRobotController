@@ -26,6 +26,12 @@ __global__ void zoomKernel(
 }
 
 
+float getDigitalZoomScale(DigitalZoomStep zoomStep)
+{
+    return powf(1.25f, static_cast<float>(zoomStep));
+}
+
+
 void digitalZoom(cv::cuda::GpuMat& gpuMat, DigitalZoomStep zoomStep)
 {
     dim3 gridSize(gpuMat.cols, gpuMat.rows);

@@ -10,7 +10,7 @@ VideoWindowOverlay::VideoWindowOverlay() :
 	_dX(10),
 	_dY(20),
 	_foreground(0, 255, 0),
-	_algoEnabled(VideoProcessing::Algorithm::ALL_OFF),
+	_algoEnabled(0),
 	_zoomStep(DigitalZoomStep::ZOOM_2X)
 {
 
@@ -25,6 +25,8 @@ void VideoWindowOverlay::drawRobotData(cv::Mat& frame, const RobotData& robotDat
 	drawPidData(frame, robotData, cv::Point(width - _marginW - (strlen(PID_PIDU_PROMPT_STRING) + _doublePrecision) * _dX, _marginH));
 	drawServoData(frame, robotData, cv::Point(_marginW, height - _marginH - (2 * _dY)));
 	drawMotorData(frame, robotData, cv::Point(width - _marginW - (strlen(PID_PIDU_PROMPT_STRING) + _doublePrecision) * _dX, height - _marginH - (2 * _dY)));
+
+	drawTrackerData(frame);
 }
 
 
@@ -40,15 +42,22 @@ void VideoWindowOverlay::toggleForeground()
 	}
 }
 
-void VideoWindowOverlay::setEnhancementState(const VideoProcessing::Algorithm algoEnabled)
+void VideoWindowOverlay::setEnhancementState(const quint32 algoEnabled)
 {
 	_algoEnabled = algoEnabled;
 }
 
-void VideoWindowOverlay::setZoomState(const DigitalZoomStep zoomStep)
+void VideoWindowOverlay::setZoomState(const quint8 zoomStep)
 {
-	_zoomStep = zoomStep;
+	_zoomStep = static_cast<DigitalZoomStep>(zoomStep);
 }
+
+
+void VideoWindowOverlay::setTrackerTarget(const struct Tracker::Target& trackerTarget)
+{
+	_trackerTarget = { trackerTarget.cx, trackerTarget.cy, trackerTarget.scartX, trackerTarget.scartY, trackerTarget.width, trackerTarget.height, trackerTarget.valid, trackerTarget.state };
+}
+
 
 inline void VideoWindowOverlay::drawImuData(cv::Mat& frame, const RobotData& robotData, cv::Point coord)
 {
@@ -99,4 +108,29 @@ inline void VideoWindowOverlay::drawMotorData(cv::Mat& frame, const RobotData& r
 
 	cv::putText(frame, thrL.toStdString(), cv::Point(coord.x, coord.y), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
 	cv::putText(frame, thrR.toStdString(), cv::Point(coord.x, coord.y + _dY), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
+}
+
+
+inline void VideoWindowOverlay::drawTrackerData(cv::Mat& frame)
+{
+	float digitalZoomScale = (_algoEnabled & static_cast<quint32>(VideoProcessing::Algorithm::DIGITAL_ZOOM) ? getDigitalZoomScale(_zoomStep) : 1.0f);
+
+	cv::Rect targetRect = cv::Rect( _trackerTarget.cx - (_trackerTarget.width) * digitalZoomScale / 2,
+									_trackerTarget.cy - (_trackerTarget.height) * digitalZoomScale / 2,
+									_trackerTarget.width * digitalZoomScale,
+									_trackerTarget.height * digitalZoomScale);
+
+
+	if (_trackerTarget.state == Tracker::State::ACQUIRE)
+	{
+		cv::rectangle(frame, targetRect, _trackerTarget.valid ? cv::Scalar(0, 0, 255) : cv::Scalar(255, 0, 0));
+	}
+	else if (_trackerTarget.state == Tracker::State::TRACK)
+	{
+		cv::rectangle(frame, targetRect, cv::Scalar(0, 255, 0));
+	}
+	else if (_trackerTarget.state == Tracker::State::COAST)
+	{
+		cv::rectangle(frame, targetRect, cv::Scalar(255, 255, 0));
+	}
 }

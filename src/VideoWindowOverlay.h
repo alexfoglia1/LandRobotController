@@ -6,6 +6,7 @@
 #include "RobotData.h"
 #include "VideoProcessing.h"
 #include "DigitalZoom.h"
+#include "Tracker.h"
 
 #define SERVO_PROMPT_STRING		"SERVO: %1"
 #define ACC_XYZ_PROMPT_STRING	"ACC_%1: %2"
@@ -24,8 +25,9 @@ public:
 
     void drawRobotData(cv::Mat& frame, const RobotData& robotData);
 	void toggleForeground();
-	void setEnhancementState(const VideoProcessing::Algorithm algoEnabled);
-	void setZoomState(const DigitalZoomStep zoomStep);
+	void setEnhancementState(const quint32 algoEnabled);
+	void setZoomState(const quint8 zoomStep);
+	void setTrackerTarget(const struct Tracker::Target& trackerTarget);
 
 private:
 	inline void drawImuData(cv::Mat& frame, const RobotData& robotData, cv::Point coord);
@@ -34,6 +36,7 @@ private:
 	inline void drawMotorData(cv::Mat& frame, const RobotData& robotData, cv::Point coord);
 	inline void drawEnhancementState(cv::Mat& frame, cv::Point coord);
 	inline void drawZoomState(cv::Mat& frame, cv::Point coord);
+	inline void drawTrackerData(cv::Mat& frame);
 
 	double _fontScale;
 	int _doublePrecision;
@@ -42,8 +45,9 @@ private:
 	int _marginH;
 	int _dX;
 	int _dY;
+	struct Tracker::Target _trackerTarget;
 	cv::Scalar _foreground;
-	VideoProcessing::Algorithm _algoEnabled;
+	quint32 _algoEnabled;
 	DigitalZoomStep _zoomStep;
 
 	

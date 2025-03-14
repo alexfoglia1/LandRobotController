@@ -46,11 +46,17 @@ ${CMAKE_SOURCE_DIR}/src/VideoWindowOverlay.cpp
 ${CMAKE_SOURCE_DIR}/src/VideoProcessing.h
 ${CMAKE_SOURCE_DIR}/src/VideoProcessing.cpp
 
+${CMAKE_SOURCE_DIR}/src/Tracker.h
+${CMAKE_SOURCE_DIR}/src/Tracker.cpp
+
 ${CMAKE_SOURCE_DIR}/src/RobotData.h
 ${CMAKE_SOURCE_DIR}/src/RobotData.cpp
 
 ${CMAKE_SOURCE_DIR}/src/JoystickBridge.h
 ${CMAKE_SOURCE_DIR}/src/JoystickBridge.cpp
+
+${CMAKE_SOURCE_DIR}/src/ServoControl.h
+${CMAKE_SOURCE_DIR}/src/ServoControl.cpp
 
 ${CMAKE_SOURCE_DIR}/src/DigitalZoom.h
 ${CMAKE_SOURCE_DIR}/src/DigitalZoom.cu
@@ -62,12 +68,13 @@ find_package(Threads REQUIRED)
 find_package(Qt5 COMPONENTS Core Gui Widgets Network OpenGL REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
-find_package(OpenCV REQUIRED COMPONENTS core imgproc video highgui videoio)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc cudaoptflow video highgui videoio)
 set(OpenCV_LIB_DIRS "C:\\Users\\alex1\\git\\vcpkg\\installed\\x64-windows\\lib")
 set(OPENCV_CUDA_LIBS
     opencv_cudaimgproc
     opencv_cudaarithm
     opencv_cudawarping
+    opencv_cudaoptflow
 )
 find_package(CUDA REQUIRED)
 

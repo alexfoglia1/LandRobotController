@@ -1,6 +1,7 @@
 #include "VideoProcessing.h"
 
-
+#include <opencv2/cudaoptflow.hpp>
+#include <opencv2/cudawarping.hpp>
 
 QMap<VideoProcessing::Format, int> VideoProcessing::_formatToSize =
 {
@@ -26,7 +27,7 @@ VideoProcessing::VideoProcessing(Format inputFormat, Format outputFormat)
 	_inputFormat = inputFormat;
 	_outputFormat = outputFormat;
 
-	_algorithmsEnabled = static_cast<quint32>(VideoProcessing::Algorithm::CLAHE);
+	_algorithmsEnabled = static_cast<quint32>(VideoProcessing::Algorithm::ALL_OFF);
 	_zoomStep = DigitalZoomStep::ZOOM_2X;
 }
 
@@ -59,7 +60,6 @@ void VideoProcessing::process(cv::Mat& input, cv::Mat& output)
 	if (_algorithmsEnabled & static_cast<quint32>(VideoProcessing::Algorithm::DIGITAL_ZOOM))
 	{
 		digitalZoom(gpuMat, _zoomStep);
-		cudaDeviceSynchronize();
 	}
 
 	if (_algorithmsEnabled & static_cast<quint32>(VideoProcessing::Algorithm::BILATERAL_FILTER))
@@ -79,6 +79,11 @@ void VideoProcessing::process(cv::Mat& input, cv::Mat& output)
 		clahe->apply(channels[2], channels[2]);
 
 		cv::cuda::merge(channels, gpuMat);
+	}
+
+	if (_algorithmsEnabled & static_cast<quint32>(VideoProcessing::Algorithm::STABILIZATION))
+	{
+		stabilizeFrame(gpuMat);
 	}
 
 	gpuMat.download(output);
@@ -116,6 +121,12 @@ void VideoProcessing::setDigitalZoomStep(quint8 zoomStep)
 }
 
 
+quint32 VideoProcessing::algorithmsEnabled()
+{
+	return _algorithmsEnabled;
+}
+
+
 void VideoProcessing::crop(const cv::Mat input, cv::cuda::GpuMat& output)
 {
 	int width_in = input.cols;
@@ -146,4 +157,47 @@ void VideoProcessing::crop(const cv::Mat input, cv::cuda::GpuMat& output)
 	{
 		throw QString("Output size cannot be greater than input size");
 	}
+}
+
+
+
+void VideoProcessing::stabilizeFrame(cv::cuda::GpuMat& frame)
+{
+#if 0
+	// Converti in scala di grigi
+	cv::cuda::GpuMat gray;
+	cv::cuda::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+
+	if (_prevGray.empty())
+	{
+		_prevGray = gray.clone();
+		return;
+	}
+
+	// Optical Flow con CUDA (Farneback)
+	cv::cuda::GpuMat flowXY;
+	cv::Ptr<cv::cuda::FarnebackOpticalFlow> flow = cv::cuda::FarnebackOpticalFlow::create();
+	flow->calc(_prevGray, gray, flowXY);
+	std::vector<cv::cuda::GpuMat> flowChannels(2);
+	cv::cuda::split(flowXY, flowChannels);
+
+	// Scarica in CPU per calcolare lo spostamento medio
+	cv::Mat flowX, flowY;
+	flowChannels[0].download(flowX);
+	flowChannels[1].download(flowY);
+
+	double dx = cv::mean(flowX)[0];  // Spostamento medio in X
+	double dy = cv::mean(flowY)[0];  // Spostamento medio in Y
+
+	std::cout << "Shift: (" << dx << ", " << dy << ")\n";
+
+	// Matrice di trasformazione per compensare il movimento
+	cv::Mat transform = (cv::Mat_<float>(2, 3) << 1, 0, -dx, 0, 1, -dy);
+	cv::cuda::GpuMat stabilized;
+	cv::cuda::warpAffine(frame, stabilized, transform, frame.size());
+
+	// Aggiorna il frame stabilizzato
+	frame = stabilized.clone();
+	_prevGray = gray.clone();
+#endif
 }

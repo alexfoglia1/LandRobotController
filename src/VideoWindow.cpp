@@ -35,6 +35,12 @@ VideoWindow::VideoWindow(QWidget* parent)
 	_lastHeight = 480;
 
 	_processing = new VideoProcessing(VideoProcessing::Format::BGR, VideoProcessing::Format::RGB);
+	_tracker = new Tracker();
+
+	connect(_tracker, &Tracker::acquireDone, this, &VideoWindow::onTrackerAcquireDone);
+	connect(_tracker, &Tracker::targetMoved, this, &VideoWindow::onTrackerTargetMoved);
+
+	_tracker->start();
 }
 
 
@@ -70,10 +76,10 @@ void VideoWindow::updateFrame()
 	if (_videoFrame.empty())
 	{
 		_videoFrame = cv::Mat(_lastHeight, _lastWidth, CV_8UC3);
-		
 	}
 	else
 	{
+		_tracker->updateFrame(_videoFrame);
 		_processing->process(_videoFrame, _videoFrame);
 	}
 
@@ -215,10 +221,61 @@ void VideoWindow::EmergencyStop()
 void VideoWindow::SetAlgorithmEnabled(VideoProcessing::Algorithm algo, bool enabled)
 {
 	_processing->setAlgorithmEnabled(algo, enabled);
+	_overlay.setEnhancementState(_processing->algorithmsEnabled());
 }
 
 
 void VideoWindow::SetDigitalZoomStep(quint8 zoomStep)
 {
 	_processing->setDigitalZoomStep(zoomStep);
+
+	_overlay.setEnhancementState(_processing->algorithmsEnabled());
+	_overlay.setZoomState(zoomStep);
+}
+
+
+void VideoWindow::ToggleTracker()
+{
+	Tracker::State currentState = _tracker->state();
+	Tracker::State nextState = currentState == Tracker::State::IDLE ? Tracker::State::ACQUIRE :
+							   currentState == Tracker::State::ACQUIRE ? Tracker::State::TRACK :
+							   Tracker::State::ACQUIRE;
+
+	_tracker->setState(nextState);
+}
+
+
+void VideoWindow::StopTracker()
+{
+	_tracker->setState(Tracker::State::IDLE);
+}
+
+
+void VideoWindow::EnlargeTrackerRoi()
+{
+	_tracker->enlargeRoi(20);
+}
+
+void VideoWindow::ReduceTrackerRoi()
+{
+	_tracker->reduceRoi(20);
+}
+
+
+void VideoWindow::onTrackerAcquireDone()
+{
+	struct Tracker::Target _target = _tracker->target();
+
+	_overlay.setTrackerTarget(_target);
+	emit trackerStarted();
+}
+
+
+void VideoWindow::onTrackerTargetMoved()
+{
+	struct Tracker::Target _target = _tracker->target();
+
+	_overlay.setTrackerTarget(_target);
+
+	emit targetMoved(_target.scartX, _target.scartY);
 }
