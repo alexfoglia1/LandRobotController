@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     widget->show();
 
     JoystickBridge* js = new JoystickBridge;
-    ServoControl* servoControl = new ServoControl(0.75, 0.0025, 0.20);
+    ServoControl* servoControl = new ServoControl(0.75, 0.0, 0.20);
 #ifdef __HOTSPOT__
     Comm comm("172.20.10.10", 7777);
 #else
@@ -56,6 +56,9 @@ int main(int argc, char* argv[])
     QObject::connect(js, &JoystickBridge::updatedServo, servoControl, &ServoControl::servoDispatch);
     QObject::connect(widget, &VideoWindow::trackerStarted, servoControl, &ServoControl::reset);
     QObject::connect(widget, &VideoWindow::targetMoved, servoControl, &ServoControl::targetMoved);
+    QObject::connect(widget, &VideoWindow::trackerCoastingFalure, servoControl, [servoControl] { servoControl->reset(); servoControl->servoDispatch(1500); });
+
+    comm->start();
 
     return app->exec();
 }

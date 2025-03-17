@@ -26,7 +26,10 @@ void VideoWindowOverlay::drawRobotData(cv::Mat& frame, const RobotData& robotDat
 	drawServoData(frame, robotData, cv::Point(_marginW, height - _marginH - (2 * _dY)));
 	drawMotorData(frame, robotData, cv::Point(width - _marginW - (strlen(PID_PIDU_PROMPT_STRING) + _doublePrecision) * _dX, height - _marginH - (2 * _dY)));
 
-	drawTrackerData(frame);
+	if (_trackerTarget.state != Tracker::State::IDLE)
+	{
+		drawTrackerData(frame);
+	}
 }
 
 
@@ -55,7 +58,7 @@ void VideoWindowOverlay::setZoomState(const quint8 zoomStep)
 
 void VideoWindowOverlay::setTrackerTarget(const struct Tracker::Target& trackerTarget)
 {
-	_trackerTarget = { trackerTarget.cx, trackerTarget.cy, trackerTarget.scartX, trackerTarget.scartY, trackerTarget.width, trackerTarget.height, trackerTarget.valid, trackerTarget.state };
+	_trackerTarget = { trackerTarget.cx, trackerTarget.cy, trackerTarget.scartX, trackerTarget.scartY, trackerTarget.width, trackerTarget.height, trackerTarget.valid, trackerTarget.correlation, trackerTarget.contrastIdx, trackerTarget.state };
 }
 
 
@@ -120,6 +123,11 @@ inline void VideoWindowOverlay::drawTrackerData(cv::Mat& frame)
 									_trackerTarget.width * digitalZoomScale,
 									_trackerTarget.height * digitalZoomScale);
 
+	QString correlation = QString("CORR: %1").arg(_trackerTarget.correlation);
+	QString contrastIdx = QString("CTRS: %1").arg(_trackerTarget.contrastIdx);
+
+	cv::putText(frame, correlation.toStdString(), cv::Point(targetRect.x, targetRect.y - _dY), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
+	cv::putText(frame, contrastIdx.toStdString(), cv::Point(targetRect.x, targetRect.y + targetRect.height + _dY), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
 
 	if (_trackerTarget.state == Tracker::State::ACQUIRE)
 	{

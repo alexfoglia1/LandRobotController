@@ -21,6 +21,7 @@ public:
 	static float TEMPLATE_CORR_THRESHOLD;
 	static int MAX_SCART_X;
 	static int MAX_SCART_Y;
+	static int MAX_COAST_TIME;
 
 	enum class State
 	{
@@ -39,6 +40,8 @@ public:
 		int width;
 		int height;
 		bool valid;
+		double correlation;
+		double contrastIdx;
 		State state;
 	};
 
@@ -54,8 +57,10 @@ public:
 	State state();
 
 signals:
+	void trackerIdle();
 	void acquireDone();
 	void targetMoved();
+	void coastingFailure();
 
 protected:
 	void run() override;	
@@ -74,6 +79,8 @@ private:
 	int _roiHeight;
 	State _state;
 	cv::Point _lastDisplacement;
+	int _countCoast;
+	bool _synthTargetWindowExposed;
 
 	cv::Mat _synthTarget;
 	cv::Point _synthTargetCoord;

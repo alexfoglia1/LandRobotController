@@ -14,7 +14,6 @@ public:
 	void setKi(double ki);
 	void setKd(double kd);
 
-
 signals:
 	void updatedServo(quint16 servo);
 
@@ -36,6 +35,8 @@ private:
 
 	double saturate(double in, double outMin, double outMax);
 	double toRange(double in, double inMin, double inMax, double outMin, double outMax);
+
+	double joyToServo(quint16 joyIn);
 
 };
 

@@ -10,7 +10,9 @@
 #include <QObject>
 #include <QUdpSocket>
 #include <QHostAddress>
-#include <QTimer.h>
+#include <qthread.h>
+#include <qmutex.h>
+#include <qtimer.h>
 
 #pragma pack(push, 1) 
 
@@ -70,12 +72,19 @@ typedef struct
 } TelemetryMessage;
 
 
-class Comm : public QObject
+typedef enum
+{
+    CONTROL = 0,
+    GET_TELEMETRY_FIRST = 1,
+    GET_TELEMETRY_SECOND = 2
+} CommStatus;
+
+class Comm : public QThread
 {
     Q_OBJECT
 
 public:
-    Comm(QString destIp, quint16 destPort);
+    Comm(QString destIp, quint16 destPort, QObject* parent=nullptr);
 
 public slots:
     void setXY(qint16 x, qint16 y);
@@ -83,9 +92,10 @@ public slots:
     void setServo(quint16 servo);
     void emergencyStop();
     void onSocketReadyRead();
-    void onTelemetryTimeout();
+    void onTimerTimeout();
 
     void transmitControl();
+    void transmitTelemetry();
 
 signals:
     void receivedGyroX(float gyroX);
@@ -108,8 +118,10 @@ private:
     QUdpSocket _sock;
     QHostAddress _addr;
     quint16 _port;
-    QTimer _telemetryTimer;
+    QTimer _timer;
     quint16 _telemetryMask;
+    CommStatus _status;
+    QMutex _txMutex;
 
     void telemetryIngest(TelemetryMessage* telemetryMessage);
     template <typename T> T popFromPayload(uint8_t* payload, uint32_t* payloadIndex);

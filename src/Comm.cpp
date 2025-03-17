@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <iostream>
 
-Comm::Comm(QString destIp, quint16 destPort)
+Comm::Comm(QString destIp, quint16 destPort, QObject* parent) : QThread(parent)
 {
 	_addr = QHostAddress(destIp);
 	_port = destPort;
@@ -12,66 +12,77 @@ Comm::Comm(QString destIp, quint16 destPort)
 	connect(&_sock, SIGNAL(readyRead()), this, SLOT(onSocketReadyRead()));
 
     _telemetryMask = 0x7F;
-    _telemetryTimer.setSingleShot(false);
-    _telemetryTimer.setTimerType(Qt::PreciseTimer);
-    _telemetryTimer.setInterval(20);
+    _timer.setSingleShot(false);
+    _timer.setTimerType(Qt::PreciseTimer);
+    _timer.setInterval(10);
+
+    _timer.moveToThread(this);
+
+    _status = CONTROL;
     
-    connect(&_telemetryTimer, SIGNAL(timeout()), this, SLOT(onTelemetryTimeout()));
-    _telemetryTimer.start();
+    connect(&_timer, SIGNAL(timeout()), this, SLOT(onTimerTimeout()));
+    connect(this, SIGNAL(started()), &_timer, SLOT(start()));
 }
 
 
-void Comm::onTelemetryTimeout()
+void Comm::onTimerTimeout()
 {
-    TelemetryHeader hdr;
-
-    hdr.byte0.byte = LOBYTE(_telemetryMask);
-    hdr.byte1.byte = HIBYTE(_telemetryMask);
-    _telemetryMask ^= 0x7F7F;
-
-    QByteArray qba(1 + static_cast<int>(sizeof(TelemetryHeader)), 0);
-    qba[0] = (char)(TLMT_MSG_ID);
-    memcpy(qba.data() + 1, &hdr, sizeof(TelemetryHeader));
-    
-    _sock.writeDatagram(qba, _addr, _port);
+    switch (_status)
+    {
+    case CONTROL:
+        transmitControl();
+        _status = GET_TELEMETRY_FIRST;
+        break;
+    case GET_TELEMETRY_FIRST:
+        transmitTelemetry();
+        _status = GET_TELEMETRY_SECOND;
+        break;
+    case GET_TELEMETRY_SECOND:
+        transmitTelemetry();
+        _status = CONTROL;
+        break;
+    default:
+        break;
+    }
 }
-
 
 
 void Comm::setXY(qint16 x, qint16 y)
 {
+    _txMutex.lock();
 	_ctrlMessage.xAxis = x;
 	_ctrlMessage.yAxis = y;
-
-    transmitControl();
+    _txMutex.unlock();
 }
 
 void Comm::setThrottle(qint16 throttle)
 {
+    _txMutex.lock();
 	_ctrlMessage.throttle = throttle;
-
-    transmitControl();
+    _txMutex.unlock();
 }
 
 
 void Comm::setServo(quint16 servo)
 {
+    _txMutex.lock();
 	_ctrlMessage.servo = servo;
-
-    //printf("_ctrlMessage.servo(%d)\n", _ctrlMessage.servo);
-
-    transmitControl();
+    _txMutex.unlock();
 }
 
 void Comm::emergencyStop()
 {
-    char emrg[1] = { EMRG_MSG_ID };
+    char emrg[1] = { (char)EMRG_MSG_ID };
+
+    _txMutex.lock();
     _sock.writeDatagram(emrg, 1, _addr, _port);
+    _txMutex.unlock();
 }
 
 
 void Comm::transmitControl()
 {
+    _txMutex.lock();
 	_ctrlMessage.checksum = checksum();
 
     //std::cout << "xAxis: " << _ctrlMessage.xAxis << std::endl;
@@ -81,6 +92,25 @@ void Comm::transmitControl()
 	memcpy(qba.data() + 1, &_ctrlMessage, sizeof(CtrlMessage));
 
 	_sock.writeDatagram(qba, _addr, _port);
+    _txMutex.unlock();
+}
+
+void Comm::transmitTelemetry()
+{
+    _txMutex.lock();
+
+    TelemetryHeader hdr;
+    hdr.byte0.byte = LOBYTE(_telemetryMask);
+    hdr.byte1.byte = HIBYTE(_telemetryMask);
+    _telemetryMask ^= 0x7F7F;
+
+    QByteArray qba(1 + static_cast<int>(sizeof(TelemetryHeader)), 0);
+    qba[0] = (char)(TLMT_MSG_ID);
+    memcpy(qba.data() + 1, &hdr, sizeof(TelemetryHeader));
+
+    _sock.writeDatagram(qba, _addr, _port);
+
+    _txMutex.unlock();
 }
 
 quint16 Comm::checksum()
@@ -100,12 +130,15 @@ quint16 Comm::checksum()
 void Comm::onSocketReadyRead()
 {
 	TelemetryMessage message;
+
+    _txMutex.lock();
 	while (_sock.hasPendingDatagrams())
 	{
 		_sock.readDatagram(reinterpret_cast<char*>(&message), sizeof(TelemetryMessage));
 
 		telemetryIngest(&message);
 	}
+    _txMutex.unlock();
 }
 
 

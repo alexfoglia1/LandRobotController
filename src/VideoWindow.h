@@ -21,7 +21,9 @@ public:
 
 
 signals:
+    void trackerStopped();
     void trackerStarted();
+    void trackerCoastingFalure();
     void targetMoved(int cx, int cy);
 
 public slots:
@@ -56,6 +58,8 @@ private slots:
     void updateFrame();  // Slot per aggiornare lo stream
     void onTrackerAcquireDone();
     void onTrackerTargetMoved();
+    void onTrackerIdle();
+    void onTrackerCoastingFailure();
 
 private:
     QTimer _timer;         // Timer per aggiornare i frame

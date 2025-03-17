@@ -17,7 +17,7 @@ VideoWindow::VideoWindow(QWidget* parent)
 
 	std::string pipeline = "udpsrc port=5000 ! application/x-rtp, encoding-name=H264 ! "
 		"rtph264depay ! avdec_h264 ! videoconvert ! appsink";
-
+	
 	// Apri il video stream
 	_cap = cv::VideoCapture(pipeline, cv::CAP_GSTREAMER);
 	if (!_cap.isOpened())
@@ -37,8 +37,10 @@ VideoWindow::VideoWindow(QWidget* parent)
 	_processing = new VideoProcessing(VideoProcessing::Format::BGR, VideoProcessing::Format::RGB);
 	_tracker = new Tracker();
 
+	connect(_tracker, &Tracker::trackerIdle, this, &VideoWindow::onTrackerIdle);
 	connect(_tracker, &Tracker::acquireDone, this, &VideoWindow::onTrackerAcquireDone);
 	connect(_tracker, &Tracker::targetMoved, this, &VideoWindow::onTrackerTargetMoved);
+	connect(_tracker, &Tracker::coastingFailure, this, &VideoWindow::onTrackerCoastingFailure);
 
 	_tracker->start();
 }
@@ -251,6 +253,19 @@ void VideoWindow::StopTracker()
 }
 
 
+void VideoWindow::onTrackerIdle()
+{
+	_overlay.setTrackerTarget({ 0, 0, 0, 0, 0, 0, false, 0.0, 0.0, Tracker::State::IDLE });
+	emit trackerStopped();
+}
+
+
+void VideoWindow::onTrackerCoastingFailure()
+{
+	emit trackerCoastingFalure();
+}
+
+
 void VideoWindow::EnlargeTrackerRoi()
 {
 	_tracker->enlargeRoi(20);
@@ -264,8 +279,9 @@ void VideoWindow::ReduceTrackerRoi()
 
 void VideoWindow::onTrackerAcquireDone()
 {
-	struct Tracker::Target _target = _tracker->target();
 
+	struct Tracker::Target _target = _tracker->target();
+	
 	_overlay.setTrackerTarget(_target);
 	emit trackerStarted();
 }

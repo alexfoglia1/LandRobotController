@@ -5,10 +5,10 @@
 int Tracker::DEFAULT_ROI_HEIGHT = 200;
 int Tracker::DEFAULT_ROI_WIDTH  = 200;
 int Tracker::RMS_CONTRAST_VALID_THRESHOLD = 20;
-float Tracker::TEMPLATE_CORR_THRESHOLD = 0.2f;
+float Tracker::TEMPLATE_CORR_THRESHOLD = 0.15f;
 int Tracker::MAX_SCART_X = 100;
 int Tracker::MAX_SCART_Y = 100;
-
+int Tracker::MAX_COAST_TIME = 50;
 
 Tracker::Tracker() : QThread(nullptr)
 {
@@ -23,6 +23,7 @@ Tracker::Tracker() : QThread(nullptr)
 
 	_state = Tracker::State::IDLE;
 	_target.state = _state;
+	_countCoast = 0;
 
 	_templMatch = cv::cuda::createTemplateMatching(CV_8UC1, cv::TM_CCOEFF_NORMED);
 	_lastDisplacement = cv::Point(0, 0);
@@ -31,6 +32,7 @@ Tracker::Tracker() : QThread(nullptr)
 	memset(_synthTarget.ptr<uchar3>(), 0x00, 1920 * 1080);
 	_synthTargetSize = cv::Size(50, 50);
 	_synthTargetCoord = cv::Point(1920 / 2 - _synthTargetSize.width/2, 1060/2 - _synthTargetSize.height);
+	_synthTargetWindowExposed = false;
 }
 
 
@@ -118,7 +120,7 @@ Tracker::Target Tracker::target()
 	Tracker::Target target;
 
 	_targetMutex.lock();
-	target = { _target.cx, _target.cy, _target.scartX, _target.scartY, _target.width, _target.height, _target.valid, _target.state };
+	target = { _target.cx, _target.cy, _target.scartX, _target.scartY, _target.width, _target.height, _target.valid, _target.correlation, _target.contrastIdx, _target.state };
 	_targetMutex.unlock();
 
 	return target;
@@ -155,6 +157,12 @@ void Tracker::run()
 		}
 		else
 		{
+			if (_synthTargetWindowExposed)
+			{
+				cv::destroyWindow("Synth Target");
+				_synthTargetWindowExposed = false;
+			}
+			emit trackerIdle();
 			msleep(10);
 		}
 	}
@@ -180,12 +188,13 @@ void Tracker::process(Tracker::State state, cv::cuda::GpuMat& lastFrame)
 		coast(lastFrame);
 	}
 
-	updateSynthTarget();
+	//updateSynthTarget();
 }
 
 
 void Tracker::acquire(cv::cuda::GpuMat& lastFrame)
 {
+	_countCoast = 0;
 	_lastDisplacement.x = 0;
 	_lastDisplacement.y = 0;
 
@@ -208,6 +217,8 @@ void Tracker::acquire(cv::cuda::GpuMat& lastFrame)
 	_target.width = _roiWidth;
 	_target.height = _roiHeight;
 	_target.valid = rms_contrast > RMS_CONTRAST_VALID_THRESHOLD;
+	_target.correlation = 0.0;
+	_target.contrastIdx = rms_contrast;
 
 	_targetMutex.unlock();
 
@@ -244,16 +255,25 @@ void Tracker::coreTracker(cv::cuda::GpuMat& lastFrame, Tracker::State trackerSta
 	int roiY = (_target.cy + displacement.y) - (_target.height / 2);
 
 	cv::cuda::GpuMat matchedTemplate = lastFrame(cv::Rect(roiX, roiY, _roiWidth, _roiHeight));
-	float correlation = computeCorrelation(matchedTemplate);
+	
+	cv::Scalar mean, stddev;
+	cv::cuda::meanStdDev(matchedTemplate, mean, stddev);
+	double rms_contrast = stddev[0];
+
+	double correlation = computeCorrelation(matchedTemplate);
 
 	_targetMutex.lock();
 	_target.state = trackerState;
+	_target.correlation = correlation;
+	_target.contrastIdx = rms_contrast;
+
 
 	if (correlation > correlationThreshold &&
 		displacement.x <= maxScartX &&
-		displacement.y <= maxScartY)
+		displacement.y <= maxScartY &&
+		rms_contrast > RMS_CONTRAST_VALID_THRESHOLD)
 	{
-		//_template = matchedTemplate;
+		_template = matchedTemplate;
 
 		_target.cx += displacement.x;
 		_target.cy += displacement.y;
@@ -272,11 +292,11 @@ void Tracker::coreTracker(cv::cuda::GpuMat& lastFrame, Tracker::State trackerSta
 	else
 	{
 		// Assume lastDisplacement valid
-		_target.cx += _lastDisplacement.x;
-		_target.cy += _lastDisplacement.y;
+		//_target.cx += _lastDisplacement.x;
+		//_target.cy += _lastDisplacement.y;
 
-		_target.scartX = _target.cx - lastFrame.cols / 2;
-		_target.scartY = _target.cy - lastFrame.rows / 2;
+		//_target.scartX = _target.cx - lastFrame.cols / 2;
+		//_target.scartY = _target.cy - lastFrame.rows / 2;
 
 		if (trackerState == Tracker::State::TRACK)
 		{
@@ -291,13 +311,24 @@ void Tracker::coreTracker(cv::cuda::GpuMat& lastFrame, Tracker::State trackerSta
 
 void Tracker::track(cv::cuda::GpuMat& lastFrame)
 {
+	_countCoast = 0;
 	coreTracker(lastFrame, state(), MAX_SCART_X, MAX_SCART_Y, TEMPLATE_CORR_THRESHOLD);
 }
 
 
 void Tracker::coast(cv::cuda::GpuMat& lastFrame)
 {
-	coreTracker(lastFrame, state(), 5 * MAX_SCART_X / 4, 5 * MAX_SCART_Y / 4, 9.0f * TEMPLATE_CORR_THRESHOLD/ 8.0f);
+	_countCoast += 1;
+
+	if (_countCoast < MAX_COAST_TIME)
+	{
+		coreTracker(lastFrame, state(), 4 * MAX_SCART_X / 5, 4 * MAX_SCART_Y / 5, 9.0f * TEMPLATE_CORR_THRESHOLD / 8.0f);
+	}
+	else
+	{
+		emit coastingFailure();
+		setState(State::ACQUIRE);
+	}
 }
 
 
@@ -347,10 +378,14 @@ void Tracker::updateSynthTarget()
 
 	cv::rectangle(_synthTarget, cv::Rect(_synthTargetCoord.x, _synthTargetCoord.y, _synthTargetSize.width, _synthTargetSize.height), cv::Scalar(0), cv::FILLED);
 
-	_synthTargetCoord +=  cv::Point(direction * 10, 0);
+	_synthTargetCoord +=  cv::Point(direction * 5, 0);
 
-	cv::rectangle(_synthTarget, cv::Rect(_synthTargetCoord.x, _synthTargetCoord.y, _synthTargetSize.width, _synthTargetSize.height), cv::Scalar(255), cv::FILLED);
+	cv::rectangle(_synthTarget, cv::Rect(_synthTargetCoord.x, _synthTargetCoord.y, _synthTargetSize.width, _synthTargetSize.height),
+		_synthTargetCoord.x >= 400 && _synthTargetCoord.x <= 600 ? cv::Scalar(0) : cv::Scalar(255),
+		cv::FILLED);
 
 	cv::imshow("Synth Target", _synthTarget);
+	_synthTargetWindowExposed = true;
+
 	cv::waitKey(1);
 }

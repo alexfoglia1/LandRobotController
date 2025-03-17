@@ -84,7 +84,7 @@ void JoystickBridge::onButtonEvent(const QJoystickButtonEvent& evt)
 	{
 	case 0:  if (evt.pressed) { emit emergencyStop(); } break;
 	case 1:  if (evt.pressed) { emit stopTracker(); } break;
-	case 8:  if (evt.pressed) { emit toggleTracker(); } break;
+	case 2:  if (evt.pressed) { emit toggleTracker(); } break;
 	case 11: if (evt.pressed) { _zoomStep += 1; _zoomStep %= (static_cast<quint8>(DigitalZoomStep::ZOOM_STEPS) + 1); emit setZoomStep(_zoomStep); } break;
 	case 12: if (evt.pressed) { _zoomStep = _zoomStep == 0 ? static_cast<quint8>(DigitalZoomStep::ZOOM_STEPS) : _zoomStep - 1; emit setZoomStep(_zoomStep); } break;
 	case 13: emit setImageEnhancementAlgorithm(VideoProcessing::Algorithm::CLAHE, _buttonsState[evt.button]); break;

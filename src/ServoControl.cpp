@@ -28,6 +28,7 @@ void ServoControl::setKd(double kd)
 	_kd = kd;
 }
 
+
 void ServoControl::reset()
 {
 	_offset = 0.0;
@@ -54,7 +55,7 @@ void ServoControl::targetMoved(int scartX, int scartY)
 	double dt = static_cast<double>(now - _lastMillis) * 1e-3;
 
 	_derivative = (static_cast<double>(scartX) - _error) / dt;
-	_error = -static_cast<double>(scartX + _offset);
+	_error = -static_cast<double>(scartX - _offset);
 	_integral += static_cast<double>(_error * dt);
 
 	double P = _kp * _error;
@@ -89,10 +90,20 @@ void ServoControl::servoDispatch(quint16 servo)
 {
 	if (_lastMillis < 0)
 	{
-		emit updatedServo(servo);
+		emit updatedServo(static_cast<quint16>(joyToServo(servo)));
 	}
 	else
 	{
-		_offset = toRange(servo, 1000, 2000, -50, 50);
+		_offset += toRange(servo, 1000, 2000, -1, 1);
 	}
+}
+
+
+double ServoControl::joyToServo(quint16 joyIn)
+{
+	const double coeff[4] = { 2.7389e-06, -1.2324e-02, 1.8825e+01, -8.2519e+03 };
+
+	double x = saturate(joyIn, 1000, 2000);
+	double result = coeff[3] + coeff[2] * x + coeff[1] * pow(x, 2) + coeff[0] * pow(x, 3);
+	return static_cast<quint16>(saturate(result, 1000, 2000));
 }
