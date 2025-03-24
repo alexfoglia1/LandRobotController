@@ -98,9 +98,11 @@ inline void VideoWindowOverlay::drawPidData(cv::Mat& frame, const RobotData& rob
 
 inline void VideoWindowOverlay::drawServoData(cv::Mat& frame, const RobotData& robotData, cv::Point coord)
 {
-	QString servo = QString(SERVO_PROMPT_STRING).arg(QString::number(robotData.getServo()));
+	QString servoAzi = QString(SERVO_AZI_PROMPT_STRING).arg(QString::number(robotData.getServoAzi()));
+	QString servoEle = QString(SERVO_ELE_PROMPT_STRING).arg(QString::number(robotData.getServoEle()));
 
-	cv::putText(frame, servo.toStdString(), cv::Point(coord.x, coord.y), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
+	cv::putText(frame, servoAzi.toStdString(), cv::Point(coord.x, coord.y), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
+	cv::putText(frame, servoEle.toStdString(), cv::Point(coord.x, coord.y + _dY), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
 }
 
 

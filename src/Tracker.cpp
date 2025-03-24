@@ -31,7 +31,7 @@ Tracker::Tracker() : QThread(nullptr)
 	_synthTarget = cv::Mat(1080, 1920, CV_8UC1);
 	memset(_synthTarget.ptr<uchar3>(), 0x00, 1920 * 1080);
 	_synthTargetSize = cv::Size(50, 50);
-	_synthTargetCoord = cv::Point(1920 / 2 - _synthTargetSize.width/2, 1060/2 - _synthTargetSize.height);
+	_synthTargetCoord = cv::Point(1920 / 2 - _synthTargetSize.width/2, 2 * 1080 / 3);
 	_synthTargetWindowExposed = false;
 }
 
@@ -188,7 +188,7 @@ void Tracker::process(Tracker::State state, cv::cuda::GpuMat& lastFrame)
 		coast(lastFrame);
 	}
 
-	//updateSynthTarget();
+	updateSynthTarget();
 }
 
 

@@ -14,7 +14,8 @@ RobotData::RobotData() :
 	_pidU(0.0f),
 	_thrL(0),
 	_thrR(0),
-	_servo(0)
+	_servoAzi(1500),
+	_servoEle(1500)
 {
 
 }

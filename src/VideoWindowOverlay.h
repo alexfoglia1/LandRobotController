@@ -8,7 +8,8 @@
 #include "DigitalZoom.h"
 #include "Tracker.h"
 
-#define SERVO_PROMPT_STRING		"SERVO: %1"
+#define SERVO_AZI_PROMPT_STRING	"AZI: %1"
+#define SERVO_ELE_PROMPT_STRING	"ELE: %1"
 #define ACC_XYZ_PROMPT_STRING	"ACC_%1: %2"
 #define GYRO_XYZ_PROMPT_STRING	"GYRO_%1: %2"
 #define PID_PIDU_PROMPT_STRING	"PID_%1: %2"

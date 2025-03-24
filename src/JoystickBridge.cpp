@@ -9,9 +9,9 @@ JoystickBridge::JoystickBridge(QObject* parent) : QObject(parent)
 {
 	_js = QJoysticks::getInstance();
 
-	_x = 0;
-	_y = 0;
-	_servoData = 1500;
+	_gyroZSetPoint = 0;
+	_servoAzi = 1500;
+	_servoEle = 1500;
 	_throttle = 0;
 	_numButtons = 32;
 	_zoomStep = 0;
@@ -85,6 +85,9 @@ void JoystickBridge::onButtonEvent(const QJoystickButtonEvent& evt)
 	case 0:  if (evt.pressed) { emit emergencyStop(); } break;
 	case 1:  if (evt.pressed) { emit stopTracker(); } break;
 	case 2:  if (evt.pressed) { emit toggleTracker(); } break;
+	case 3:  if (evt.pressed) { emit toggleServoMode(); } break;
+	case 4:  if (evt.pressed) { emit reduceTrackerRoi(); } break;
+	case 6:  if (evt.pressed) { emit enlargeTrackerRoi(); } break;
 	case 11: if (evt.pressed) { _zoomStep += 1; _zoomStep %= (static_cast<quint8>(DigitalZoomStep::ZOOM_STEPS) + 1); emit setZoomStep(_zoomStep); } break;
 	case 12: if (evt.pressed) { _zoomStep = _zoomStep == 0 ? static_cast<quint8>(DigitalZoomStep::ZOOM_STEPS) : _zoomStep - 1; emit setZoomStep(_zoomStep); } break;
 	case 13: emit setImageEnhancementAlgorithm(VideoProcessing::Algorithm::CLAHE, _buttonsState[evt.button]); break;
@@ -104,8 +107,9 @@ void JoystickBridge::onAxisEvent(const QJoystickAxisEvent& evt)
 	if (isValidAxisEvent)
 	{
 		qint16 throttle = _throttle;
-		qint16 x = _x;
-		quint16 servoData = _servoData;
+		qint16 gyroZSetPoint = _gyroZSetPoint;
+		quint16 servoAzi = _servoAzi;
+		quint16 servoEle = _servoEle;
 
 		if (evt.axis == 5)
 		{
@@ -124,19 +128,27 @@ void JoystickBridge::onAxisEvent(const QJoystickAxisEvent& evt)
 			//printf("after dcz(%f)\t", fSignal);
 			fSignal = mapValue(fSignal, 1000.0, 2000.0, -180.0, 180.0);
 			//printf("to angle(%f)\t", fSignal);
-			_x = (qint16)(fSignal); 
+			_gyroZSetPoint = (qint16)(fSignal); 
 			//printf("_x(%d)\n", _x);
 
-			if (_x != x)
-				emit updateXY(_x, _y);
+			if (_gyroZSetPoint != gyroZSetPoint)
+				emit updatedGyroZSetPoint(_gyroZSetPoint);
 		}
 		else if (evt.axis == 2)
 		{
 			qreal fSignal = deadCenterZone(-evtValue, 0.25, 1500.0, -1.0, 1.0);
-			_servoData = (qint16)(fSignal);
+			_servoAzi = (qint16)(fSignal);
 
-			if (_servoData != servoData)
-				emit updatedServo(_servoData);
+			if (_servoAzi != servoAzi)
+				emit updatedServo(_servoAzi, _servoEle);
+		}
+		else if (evt.axis == 3)
+		{
+			qreal fSignal = deadCenterZone(-evtValue, 0.25, 1500.0, -1.0, 1.0);
+			_servoEle = (qint16)(fSignal);
+
+			if (_servoEle != servoEle)
+				emit updatedServo(_servoAzi, _servoEle);
 		}
 		else if (evt.axis == 4)
 		{
@@ -149,10 +161,10 @@ void JoystickBridge::onAxisEvent(const QJoystickAxisEvent& evt)
 				emit updatedThrottle(-_throttle);
 		}
 
-		else if (evt.axis == 3)
-		{
-			if (evtValue == -1) emit reduceTrackerRoi();
-			if (evtValue == 1) emit enlargeTrackerRoi();
-		}
+		//else if (evt.axis == 3)
+		//{
+		//	if (evtValue == -1) emit reduceTrackerRoi();
+		//	if (evtValue == 1) emit enlargeTrackerRoi();
+		//}
 	}
 }

@@ -16,13 +16,14 @@
 
 #pragma pack(push, 1) 
 
+
 typedef struct
 {
-    int16_t xAxis;
-    int16_t yAxis;
+    int16_t gyroZ;
     int16_t throttle;
-    uint16_t servo;
-    uint16_t checksum;
+    uint16_t servoAzi;
+    uint16_t servoEle;
+    uint16_t servoMode;
 } CtrlMessage;
 
 
@@ -87,9 +88,9 @@ public:
     Comm(QString destIp, quint16 destPort, QObject* parent=nullptr);
 
 public slots:
-    void setXY(qint16 x, qint16 y);
+    void setGyroZSetPoint(qint16 gyroZSetPoint);
     void setThrottle(qint16 throttle);
-    void setServo(quint16 servo);
+    void setServo(quint16 mode, quint16 servoAzi, quint16 servoEle);
     void emergencyStop();
     void onSocketReadyRead();
     void onTimerTimeout();
@@ -111,7 +112,7 @@ signals:
     void receivedPidU(float gyroZSP);
     void receivedThrL(quint16 thrL);
     void receivedThrR(quint16 thrR);
-    void receivedServo(quint16 servo);
+    void receivedServo(quint32 servo);
 
 private:
     CtrlMessage _ctrlMessage;

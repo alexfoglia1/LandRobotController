@@ -13,23 +13,24 @@ public:
 	JoystickBridge(QObject* parent = nullptr);
 	
 signals:
-	void updatedServo(quint16 servo);
+	void updatedServo(quint16 servoAzi, quint16 servoEle);
 	void updatedThrottle(qint16 throttle);
-	void updateXY(qint16 x, qint16 y);
+	void updatedGyroZSetPoint(qint16 gyroZSetPoint);
 	void emergencyStop();
 	void setImageEnhancementAlgorithm(VideoProcessing::Algorithm algo, bool enabled);
 	void setZoomStep(quint8 zoomStep);
 	void enlargeTrackerRoi();
 	void reduceTrackerRoi();
 	void toggleTracker();
+	void toggleServoMode();
 	void stopTracker();
 
 private:
 	QJoysticks* _js;
 
-	quint16 _servoData;
-	qint16 _x;
-	qint16 _y;
+	quint16 _servoAzi;
+	quint16 _servoEle;
+	qint16 _gyroZSetPoint;
 	qint16 _throttle;
 	quint8 _zoomStep;
 	int _numButtons;

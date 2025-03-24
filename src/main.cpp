@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     widget->show();
 
     JoystickBridge* js = new JoystickBridge;
-    ServoControl* servoControl = new ServoControl(0.75, 0.0, 0.20);
+    ServoControl* servoControl = new ServoControl(ServoControl::ServoMode::VELOCITY, 2.50, 0.0, 0.25);
 #ifdef __HOTSPOT__
     Comm comm("172.20.10.10", 7777);
 #else
@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
 #endif
 
     QObject::connect(js, &JoystickBridge::updatedThrottle, comm, &Comm::setThrottle);
-    QObject::connect(js, &JoystickBridge::updateXY, comm, &Comm::setXY);
+    QObject::connect(js, &JoystickBridge::updatedGyroZSetPoint, comm, &Comm::setGyroZSetPoint);
     QObject::connect(js, &JoystickBridge::emergencyStop, comm, &Comm::emergencyStop);
 
     QObject::connect(comm, &Comm::receivedGyroX, widget, &VideoWindow::ReceiveGyroX);
@@ -56,7 +56,14 @@ int main(int argc, char* argv[])
     QObject::connect(js, &JoystickBridge::updatedServo, servoControl, &ServoControl::servoDispatch);
     QObject::connect(widget, &VideoWindow::trackerStarted, servoControl, &ServoControl::reset);
     QObject::connect(widget, &VideoWindow::targetMoved, servoControl, &ServoControl::targetMoved);
-    QObject::connect(widget, &VideoWindow::trackerCoastingFalure, servoControl, [servoControl] { servoControl->reset(); servoControl->servoDispatch(1500); });
+
+    QObject::connect(js, &JoystickBridge::toggleServoMode, servoControl, [servoControl]
+    {
+        ServoControl::ServoMode currentMode = servoControl->servoMode();
+        servoControl->setMode(currentMode == ServoControl::ServoMode::POSITION ? ServoControl::ServoMode::VELOCITY : ServoControl::ServoMode::POSITION);
+    });
+    
+    QObject::connect(widget, &VideoWindow::trackerCoastingFalure, servoControl, [servoControl] { servoControl->reset(); servoControl->servoDispatch(1500, 1500); });
 
     comm->start();
 

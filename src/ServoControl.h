@@ -8,19 +8,28 @@ class ServoControl : public QObject
 	Q_OBJECT
 
 public:
-	ServoControl(double kp, double ki, double kd, QObject* parent=nullptr);
+	enum class ServoMode
+	{
+		POSITION = 0x00,
+		VELOCITY
+	};
+
+	ServoControl(ServoMode servoMode, double kp, double ki, double kd, QObject* parent=nullptr);
+
+	void setMode(ServoMode servoMode);
+	ServoMode servoMode();
 
 	void setKp(double kp);
 	void setKi(double ki);
 	void setKd(double kd);
 
 signals:
-	void updatedServo(quint16 servo);
+	void updatedServo(quint16 servoMode, quint16 servoAzi, quint16 servoEle);
 
 public slots:
 	void reset();
 	void targetMoved(int scartX, int scartY);
-	void servoDispatch(quint16 servo);
+	void servoDispatch(quint16 servoAzi, quint16 servoEle);
 
 private:
 	double _kp;
@@ -30,6 +39,7 @@ private:
 	double _derivative;
 	double _integral;
 	double _offset;
+	ServoMode _servoMode;
 
 	qint64 _lastMillis;
 

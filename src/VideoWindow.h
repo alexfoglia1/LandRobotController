@@ -40,7 +40,7 @@ public slots:
     void ReceivePidU(float pidU);
     void ReceiveThrL(quint16 thrL);
     void ReceiveThrR(quint16 thrR);
-    void ReceiveServo(quint16 servo);
+    void ReceiveServo(quint32 servo);
     void EmergencyStop();
     void SetAlgorithmEnabled(VideoProcessing::Algorithm algo, bool enabled);
     void SetDigitalZoomStep(quint8 zoomStep);

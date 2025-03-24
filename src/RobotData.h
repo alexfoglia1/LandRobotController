@@ -21,7 +21,7 @@ public:
 	inline void setPidU(float pidU);
 	inline void setThrL(quint16 thrL);
 	inline void setThrR(quint16 thrR);
-	inline void setServo(quint16 servo);
+	inline void setServo(quint16 servoAzi, quint16 servoEle);
 
 	inline float getGyroX() const;
 	inline float getGyroY() const;
@@ -36,7 +36,8 @@ public:
 	inline float getPidU() const;
 	inline quint16 getThrL() const;
 	inline quint16 getThrR() const;
-	inline quint16 getServo() const;
+	inline quint16 getServoAzi() const;
+	inline quint16 getServoEle() const;
 
 private:
 	float _gyroX;
@@ -52,7 +53,8 @@ private:
 	float _pidU;
 	quint16 _thrL;
 	quint16 _thrR;
-	quint16 _servo;
+	quint16 _servoAzi;
+	quint16 _servoEle;
 };
 
 inline void RobotData::setGyroX(float gyroX) { _gyroX = gyroX; }
@@ -68,7 +70,7 @@ inline void RobotData::setPidD(float pidD) { _pidD = pidD; }
 inline void RobotData::setPidU(float pidU) { _pidU = pidU; }
 inline void RobotData::setThrL(quint16 thrL) { _thrL = thrL; }
 inline void RobotData::setThrR(quint16 thrR) { _thrR = thrR; }
-inline void RobotData::setServo(quint16 servo) { _servo = servo; }
+inline void RobotData::setServo(quint16 servoAzi, quint16 servoEle) { _servoAzi = servoAzi; _servoEle = servoEle; }
 
 inline float RobotData::getGyroX() const { return _gyroX; }
 inline float RobotData::getGyroY() const { return _gyroY; }
@@ -83,6 +85,7 @@ inline float RobotData::getPidD() const { return _pidD; }
 inline float RobotData::getPidU() const { return _pidU; }
 inline quint16 RobotData::getThrL() const { return _thrL; }
 inline quint16 RobotData::getThrR() const { return _thrR; }
-inline quint16 RobotData::getServo() const { return _servo; }
+inline quint16 RobotData::getServoAzi() const { return _servoAzi; }
+inline quint16 RobotData::getServoEle() const { return _servoEle; }
 
 #endif

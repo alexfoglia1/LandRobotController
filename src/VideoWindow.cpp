@@ -207,9 +207,9 @@ void VideoWindow::ReceiveThrR(quint16 thrR)
 }
 
 
-void VideoWindow::ReceiveServo(quint16 servo)
+void VideoWindow::ReceiveServo(quint32 servo)
 {
-	_robotData.setServo(servo);
+	_robotData.setServo(servo >> 16, servo & 0xFFFF);
 }
 
 

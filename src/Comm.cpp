@@ -9,6 +9,9 @@ Comm::Comm(QString destIp, quint16 destPort, QObject* parent) : QThread(parent)
 	_port = destPort;
 
 	memset(&_ctrlMessage, 0x00, sizeof(CtrlMessage));
+    _ctrlMessage.servoAzi = 1500;
+    _ctrlMessage.servoEle = 1500;
+
 	connect(&_sock, SIGNAL(readyRead()), this, SLOT(onSocketReadyRead()));
 
     _telemetryMask = 0x7F;
@@ -47,11 +50,10 @@ void Comm::onTimerTimeout()
 }
 
 
-void Comm::setXY(qint16 x, qint16 y)
+void Comm::setGyroZSetPoint(qint16 gyroZSetPoint)
 {
     _txMutex.lock();
-	_ctrlMessage.xAxis = x;
-	_ctrlMessage.yAxis = y;
+	_ctrlMessage.gyroZ = gyroZSetPoint;
     _txMutex.unlock();
 }
 
@@ -63,12 +65,15 @@ void Comm::setThrottle(qint16 throttle)
 }
 
 
-void Comm::setServo(quint16 servo)
+void Comm::setServo(quint16 mode, quint16 servoAzi, quint16 servoEle)
 {
     _txMutex.lock();
-	_ctrlMessage.servo = servo;
+	_ctrlMessage.servoAzi = servoAzi;
+    _ctrlMessage.servoEle = servoEle;
+    _ctrlMessage.servoMode = mode;
     _txMutex.unlock();
 }
+
 
 void Comm::emergencyStop()
 {
@@ -83,9 +88,8 @@ void Comm::emergencyStop()
 void Comm::transmitControl()
 {
     _txMutex.lock();
-	_ctrlMessage.checksum = checksum();
-
-    //std::cout << "xAxis: " << _ctrlMessage.xAxis << std::endl;
+    //printf("Tx azi(%d), Tx ele(%d)\n", _ctrlMessage.servoAzi, _ctrlMessage.servoEle);
+    //_ctrlMessage.checksum = checksum();
 
 	QByteArray qba(1 + static_cast<int>(sizeof(CtrlMessage)), 0x00);
     qba[0] = (char)(CTRL_MSG_ID);
@@ -215,7 +219,7 @@ void Comm::telemetryIngest(TelemetryMessage* telemetryMessage)
     if (telemetryMessage->header.byte1.Bits.servo)
     {
         //std::cout << "Servo: " << popFromPayload<uint16_t>(telemetryMessage->payload, &payloadIndex) << std::endl;
-        emit receivedServo(popFromPayload<quint16>(telemetryMessage->payload, &payloadIndex));
+        emit receivedServo(popFromPayload<quint32>(telemetryMessage->payload, &payloadIndex));
     }
 }
 

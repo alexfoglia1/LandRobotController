@@ -3,13 +3,25 @@
 #include <qdatetime.h>
 
 
-ServoControl::ServoControl(double kp, double ki, double kd, QObject* parent) : QObject(parent)
+ServoControl::ServoControl(ServoControl::ServoMode servoMode, double kp, double ki, double kd, QObject* parent) : QObject(parent)
 {
 	_kp = kp;
 	_ki = ki;
 	_kd = kd;
+	_servoMode = servoMode;
 
 	reset();
+}
+
+
+void ServoControl::setMode(ServoControl::ServoMode servoMode)
+{
+	_servoMode = servoMode;
+}
+
+ServoControl::ServoMode ServoControl::servoMode()
+{
+	return _servoMode;
 }
 
 void ServoControl::setKp(double kp)
@@ -65,7 +77,8 @@ void ServoControl::targetMoved(int scartX, int scartY)
 	double U = saturate(P + I + D, -500, 500);
 
 	quint16 servoCmd = 1500 + static_cast<quint16>(U);
-	emit updatedServo(servoCmd);
+	// TODO : Tracker Elevation
+	emit updatedServo(static_cast<quint16>(_servoMode), servoCmd, 1500);
 }
 
 
@@ -86,15 +99,16 @@ double ServoControl::toRange(double in, double inMin, double inMax, double outMi
 }
 
 
-void ServoControl::servoDispatch(quint16 servo)
+void ServoControl::servoDispatch(quint16 servoAzi, quint16 servoEle)
 {
 	if (_lastMillis < 0)
 	{
-		emit updatedServo(static_cast<quint16>(joyToServo(servo)));
+		emit updatedServo(static_cast<quint16>(_servoMode), static_cast<quint16>(joyToServo(servoAzi)), static_cast<quint16>(joyToServo(servoEle)));
 	}
 	else
 	{
-		_offset += toRange(servo, 1000, 2000, -1, 1);
+		// TODO : Tracker Elevation
+		_offset += toRange(servoAzi, 1000, 2000, -1, 1);
 	}
 }
 
