@@ -17,11 +17,11 @@ int main(int argc, char* argv[])
     widget->show();
 
     JoystickBridge* js = new JoystickBridge;
-    ServoControl* servoControl = new ServoControl(ServoControl::ServoMode::VELOCITY, 2.50, 0.0, 0.25);
+    ServoControl* servoControl = new ServoControl(ServoControl::ServoMode::VELOCITY, 2.00, 0.0, 0.5, 1.20, 0.0, 0.5);
 #ifdef __HOTSPOT__
     Comm comm("172.20.10.10", 7777);
 #else
-    Comm* comm = new Comm("192.168.1.4", 7777);
+    Comm* comm = new Comm("192.168.1.6", 7777);
 #endif
 
     QObject::connect(js, &JoystickBridge::updatedThrottle, comm, &Comm::setThrottle);
@@ -49,6 +49,16 @@ int main(int argc, char* argv[])
 
     QObject::connect(js, &JoystickBridge::toggleTracker, widget, &VideoWindow::ToggleTracker);
     QObject::connect(js, &JoystickBridge::stopTracker, widget, &VideoWindow::StopTracker);
+    QObject::connect(js, &JoystickBridge::stopTracker, servoControl, &ServoControl::reset);
+    QObject::connect(js, &JoystickBridge::stopTracker, comm, [servoControl, comm]
+        {
+            comm->setServo(quint16(ServoControl::ServoMode::POSITION), 1500, 1500);
+
+            if (servoControl->servoMode() == ServoControl::ServoMode::VELOCITY)
+            {
+                comm->setServo(quint16(ServoControl::ServoMode::VELOCITY), 1500, 1500);
+            }
+        });
     QObject::connect(js, &JoystickBridge::enlargeTrackerRoi, widget, &VideoWindow::EnlargeTrackerRoi);
     QObject::connect(js, &JoystickBridge::reduceTrackerRoi, widget, &VideoWindow::ReduceTrackerRoi);
 
@@ -56,12 +66,23 @@ int main(int argc, char* argv[])
     QObject::connect(js, &JoystickBridge::updatedServo, servoControl, &ServoControl::servoDispatch);
     QObject::connect(widget, &VideoWindow::trackerStarted, servoControl, &ServoControl::reset);
     QObject::connect(widget, &VideoWindow::targetMoved, servoControl, &ServoControl::targetMoved);
+    QObject::connect(widget, &VideoWindow::trackerStopped, comm, [servoControl, comm]
+    {
+        comm->setServo(quint16(ServoControl::ServoMode::POSITION), 1500, 1500);
+
+        if (servoControl->servoMode() == ServoControl::ServoMode::VELOCITY)
+        {
+            comm->setServo(quint16(ServoControl::ServoMode::VELOCITY), 1500, 1500);
+        }
+    });
 
     QObject::connect(js, &JoystickBridge::toggleServoMode, servoControl, [servoControl]
     {
         ServoControl::ServoMode currentMode = servoControl->servoMode();
         servoControl->setMode(currentMode == ServoControl::ServoMode::POSITION ? ServoControl::ServoMode::VELOCITY : ServoControl::ServoMode::POSITION);
     });
+
+
     
     QObject::connect(widget, &VideoWindow::trackerCoastingFalure, servoControl, [servoControl] { servoControl->reset(); servoControl->servoDispatch(1500, 1500); });
 

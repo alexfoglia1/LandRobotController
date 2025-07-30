@@ -15,8 +15,7 @@ VideoWindow::VideoWindow(QWidget* parent)
 	//gst-launch-1.0 -v v4l2src device=/dev/video0 ! videoconvert    ! video/x-raw,format=I420,width=640,hei
 	// ght=480,framerate=30/1 ! videoflip method=rotate-180 ! x264enc tune=zerolatency bitrate=800 speed-preset=superfast ! rtph264pay ! udpsink host=192.168.1.4 port=5000
 
-	std::string pipeline = "udpsrc port=5000 ! application/x-rtp, encoding-name=H264 ! "
-		"rtph264depay ! avdec_h264 ! videoconvert ! appsink";
+	std::string pipeline = "udpsrc port=5000 ! application/x-rtp, encoding-name=H264 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink";
 	
 	// Apri il video stream
 	_cap = cv::VideoCapture(pipeline, cv::CAP_GSTREAMER);
@@ -33,6 +32,7 @@ VideoWindow::VideoWindow(QWidget* parent)
 
 	_lastWidth = 640;
 	_lastHeight = 480;
+	_yoloStream = new SharedMemoryStream(_lastWidth, _lastHeight);
 
 	_processing = new VideoProcessing(VideoProcessing::Format::BGR, VideoProcessing::Format::RGB);
 	_tracker = new Tracker();
@@ -68,6 +68,8 @@ void VideoWindow::initializeGL()
 
 void VideoWindow::updateFrame()
 {
+	_frameMutex.lock();
+
 	_videoFrame = cv::Mat();
 
 	if (_cap.isOpened())
@@ -83,10 +85,21 @@ void VideoWindow::updateFrame()
 	{
 		_tracker->updateFrame(_videoFrame);
 		_processing->process(_videoFrame, _videoFrame);
+		_yoloStream->sendFrame(_videoFrame.data);
 	}
 
-	_overlay.drawRobotData(_videoFrame, _robotData);
+	int N = _yoloStream->getDetections();
+	_yoloDetections.clear();
+	for (int i = 0; i < N; i++)
+	{
+		SharedMemoryStream::Detection& det = _yoloStream->detection(i);
+		_yoloDetections.push_back(det);
+	}
+	_overlay.drawRobotData(_videoFrame, _robotData, _yoloDetections);
+
 	update();
+
+	_frameMutex.unlock();
 }
 
 
@@ -279,7 +292,6 @@ void VideoWindow::ReduceTrackerRoi()
 
 void VideoWindow::onTrackerAcquireDone()
 {
-
 	struct Tracker::Target _target = _tracker->target();
 	
 	_overlay.setTrackerTarget(_target);
@@ -294,4 +306,40 @@ void VideoWindow::onTrackerTargetMoved()
 	_overlay.setTrackerTarget(_target);
 
 	emit targetMoved(_target.scartX, _target.scartY);
+}
+
+
+void VideoWindow::mousePressEvent(QMouseEvent* evt)
+{
+	QPointF pos = evt->pos();
+
+	//printf("\nmouse(%f,%f) ", pos.x(), pos.y());
+
+	//printf("pos.x(%d), pos.y(%d)\n", pos.x(), pos.y());
+
+	Tracker::State trackerState = _tracker->state();
+	if (trackerState != Tracker::State::IDLE)
+	{
+		_tracker->setState(Tracker::State::IDLE);
+
+		return;
+	}
+
+	_frameMutex.lock();
+	bool found = false;
+	for (SharedMemoryStream::Detection& det : _yoloDetections)
+	{
+		QRectF bbox(QPointF(det.x1, det.y1), QPointF(det.x2, det.y2));
+
+		if (bbox.contains(pos))
+		{
+			//printf("in bbox(%f,%f,%f,%f)", pos.x(), pos.y(), det.x2, det.y2, det.x1, det.y1);
+			_tracker->setExternalAcquisition(bbox);
+			found = true;
+			break;
+		}
+	}
+
+	if (!found) _tracker->setState(Tracker::State::IDLE);
+	_frameMutex.unlock();
 }

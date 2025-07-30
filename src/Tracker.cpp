@@ -100,6 +100,11 @@ void Tracker::setState(Tracker::State state)
 	_stateMutex.lock();
 	_state = state;
 	_stateMutex.unlock();
+
+	if (state == Tracker::State::IDLE)
+	{
+		emit trackerIdle();
+	}
 }
 
 
@@ -129,6 +134,7 @@ Tracker::Target Tracker::target()
 
 void Tracker::run()
 {
+	emit trackerIdle();
 	while (true)
 	{
 		Tracker::State currentState = state();
@@ -149,7 +155,9 @@ void Tracker::run()
 					cv::cuda::GpuMat localFrame = cv::cuda::GpuMat(_lastFrame.cols, _lastFrame.rows, _lastFrame.type());
 					_lastFrame.copyTo(localFrame);
 
+					_trackerMutex.lock();
 					process(currentState, localFrame);
+					_trackerMutex.unlock();
 
 					localFrame.copyTo(_prevFrame);
 				}
@@ -162,7 +170,6 @@ void Tracker::run()
 				cv::destroyWindow("Synth Target");
 				_synthTargetWindowExposed = false;
 			}
-			emit trackerIdle();
 			msleep(10);
 		}
 	}
@@ -188,7 +195,43 @@ void Tracker::process(Tracker::State state, cv::cuda::GpuMat& lastFrame)
 		coast(lastFrame);
 	}
 
-	updateSynthTarget();
+	//updateSynthTarget();
+}
+
+
+void Tracker::setExternalAcquisition(QRectF& rect)
+{
+	_trackerMutex.lock();
+
+	_template = _lastFrame(cv::Rect(rect.x(), rect.y(), rect.width(), rect.height()));
+	_roiWidth = rect.width();
+	_roiHeight = rect.height();
+
+	cv::Scalar mean, stddev;
+	cv::cuda::meanStdDev(_template, mean, stddev);
+	double rms_contrast = stddev[0];
+
+	_trackerMutex.unlock();
+
+	_targetMutex.lock();
+
+	_target.state = Tracker::State::ACQUIRE;
+
+	_target.cx = rect.x() + _roiWidth / 2;
+	_target.cy = rect.y() + _roiHeight / 2;
+	_target.width = _roiWidth;
+	_target.height = _roiHeight;
+	_target.valid = rms_contrast > RMS_CONTRAST_VALID_THRESHOLD;
+	_target.correlation = 0.0;
+	_target.contrastIdx = rms_contrast;
+	_target.scartX = _target.cx - _lastFrame.cols / 2;
+	_target.scartY = _target.cy - _lastFrame.rows / 2;
+
+	_targetMutex.unlock();
+
+	setState(Tracker::State::TRACK);
+
+	emit acquireDone();
 }
 
 

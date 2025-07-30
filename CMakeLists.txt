@@ -31,6 +31,9 @@ ${CMAKE_SOURCE_DIR}/3rdparty/QJoysticks/QJoysticks.h
 
 ${CMAKE_SOURCE_DIR}/src/LandRobotControllerGui.ui
 
+${CMAKE_SOURCE_DIR}/src/SharedMemoryStream.h
+${CMAKE_SOURCE_DIR}/src/SharedMemoryStream.cpp
+
 ${CMAKE_SOURCE_DIR}/src/ControllerWindow.h
 ${CMAKE_SOURCE_DIR}/src/ControllerWindow.cpp
 

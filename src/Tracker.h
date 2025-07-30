@@ -10,6 +10,7 @@
 #include <qthread.h>
 #include <qmutex.h>
 #include <qsemaphore.h>
+#include <qrect.h>
 
 class Tracker : public QThread
 {
@@ -52,6 +53,7 @@ public:
 	void reduceRoi(int dxdy);
 	void setState(State state);
 	void updateFrame(cv::Mat& frame);
+	void setExternalAcquisition(QRectF& bbox);
 	Target target();
 
 	State state();
@@ -69,6 +71,7 @@ private:
 	QSemaphore _frameSem;
 	QMutex _stateMutex;
 	QMutex _targetMutex;
+	QMutex _trackerMutex;
 
 	cv::cuda::GpuMat _prevFrame;
 	cv::cuda::GpuMat _lastFrame;

@@ -111,6 +111,7 @@ void JoystickBridge::onAxisEvent(const QJoystickAxisEvent& evt)
 		quint16 servoAzi = _servoAzi;
 		quint16 servoEle = _servoEle;
 
+		//printf("evt.axis(%d)\n", evt.axis);
 		if (evt.axis == 5)
 		{
 			if (evtValue < 0) evtValue = 0;

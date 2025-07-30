@@ -22,6 +22,7 @@ Comm::Comm(QString destIp, quint16 destPort, QObject* parent) : QThread(parent)
     _timer.moveToThread(this);
 
     _status = CONTROL;
+    transmitControl();
     
     connect(&_timer, SIGNAL(timeout()), this, SLOT(onTimerTimeout()));
     connect(this, SIGNAL(started()), &_timer, SLOT(start()));
@@ -64,12 +65,26 @@ void Comm::setThrottle(qint16 throttle)
     _txMutex.unlock();
 }
 
+static void panTiltCorrection(quint16& azi, quint16& ele)
+{
+    double matrix[2][2] = {
+        {1.0,   -0.05},
+        {0.0,   1.0}
+    };
+
+    azi = azi * matrix[0][0] + ele * matrix[1][0];
+    ele = azi * matrix[0][1] + ele * matrix[1][1];
+}
+
 
 void Comm::setServo(quint16 mode, quint16 servoAzi, quint16 servoEle)
 {
     _txMutex.lock();
+
+    //panTiltCorrection(servoAzi, servoEle);
+
 	_ctrlMessage.servoAzi = servoAzi;
-    _ctrlMessage.servoEle = servoEle;
+    _ctrlMessage.servoEle = 2000 - (servoEle - 1000);
     _ctrlMessage.servoMode = mode;
     _txMutex.unlock();
 }

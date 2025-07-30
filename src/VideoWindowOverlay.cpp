@@ -16,7 +16,7 @@ VideoWindowOverlay::VideoWindowOverlay() :
 
 }
 
-void VideoWindowOverlay::drawRobotData(cv::Mat& frame, const RobotData& robotData)
+void VideoWindowOverlay::drawRobotData(cv::Mat& frame, const RobotData& robotData, std::vector<SharedMemoryStream::Detection>& detections)
 {
 	int width = frame.cols;
 	int height = frame.rows;
@@ -29,6 +29,10 @@ void VideoWindowOverlay::drawRobotData(cv::Mat& frame, const RobotData& robotDat
 	if (_trackerTarget.state != Tracker::State::IDLE)
 	{
 		drawTrackerData(frame);
+	}
+	else
+	{
+		drawDetections(frame, detections);
 	}
 }
 
@@ -113,6 +117,19 @@ inline void VideoWindowOverlay::drawMotorData(cv::Mat& frame, const RobotData& r
 
 	cv::putText(frame, thrL.toStdString(), cv::Point(coord.x, coord.y), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
 	cv::putText(frame, thrR.toStdString(), cv::Point(coord.x, coord.y + _dY), cv::FONT_HERSHEY_SIMPLEX, _fontScale, _foreground, 2);
+}
+
+inline void VideoWindowOverlay::drawDetections(cv::Mat& frame, std::vector<SharedMemoryStream::Detection>& detections)
+{
+	for (SharedMemoryStream::Detection& d : detections)
+	{
+		cv::rectangle(frame, cv::Point((int)d.x1, (int)d.y1), cv::Point((int)d.x2, (int)d.y2), cv::Scalar(255, 255, 0), 2);
+		std::string label_text = d.label + " " + std::to_string(int(d.confidence * 100)) + "%";
+		int baseLine = 0;
+		cv::Size labelSize = cv::getTextSize(label_text, cv::FONT_HERSHEY_SIMPLEX, 0.5, 1, &baseLine);
+		int top = std::max<int>((int)d.y1, labelSize.height);
+		cv::putText(frame, label_text, cv::Point((int)d.x1, top), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 0), 2);
+	}
 }
 
 

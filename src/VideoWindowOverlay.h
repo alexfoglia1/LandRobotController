@@ -7,6 +7,8 @@
 #include "VideoProcessing.h"
 #include "DigitalZoom.h"
 #include "Tracker.h"
+#include "SharedMemoryStream.h"
+
 
 #define SERVO_AZI_PROMPT_STRING	"AZI: %1"
 #define SERVO_ELE_PROMPT_STRING	"ELE: %1"
@@ -24,7 +26,7 @@ class VideoWindowOverlay
 public:
 	VideoWindowOverlay();
 
-    void drawRobotData(cv::Mat& frame, const RobotData& robotData);
+    void drawRobotData(cv::Mat& frame, const RobotData& robotData, std::vector<SharedMemoryStream::Detection>& detections);
 	void toggleForeground();
 	void setEnhancementState(const quint32 algoEnabled);
 	void setZoomState(const quint8 zoomStep);
@@ -35,6 +37,7 @@ private:
 	inline void drawPidData(cv::Mat& frame, const RobotData& robotData, cv::Point coord);
 	inline void drawServoData(cv::Mat& frame, const RobotData& robotData, cv::Point coord);
 	inline void drawMotorData(cv::Mat& frame, const RobotData& robotData, cv::Point coord);
+	inline void drawDetections(cv::Mat& frame, std::vector<SharedMemoryStream::Detection>& detections);
 	inline void drawEnhancementState(cv::Mat& frame, cv::Point coord);
 	inline void drawZoomState(cv::Mat& frame, cv::Point coord);
 	inline void drawTrackerData(cv::Mat& frame);

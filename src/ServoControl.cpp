@@ -3,11 +3,14 @@
 #include <qdatetime.h>
 
 
-ServoControl::ServoControl(ServoControl::ServoMode servoMode, double kp, double ki, double kd, QObject* parent) : QObject(parent)
+ServoControl::ServoControl(ServoControl::ServoMode servoMode, double kpAzi, double kiAzi, double kdAzi, double kpEle, double kiEle, double kdEle, QObject* parent) : QObject(parent)
 {
-	_kp = kp;
-	_ki = ki;
-	_kd = kd;
+	_kpAzi = kpAzi;
+	_kiAzi = kiAzi;
+	_kdAzi = kdAzi;
+	_kpEle = kpEle;
+	_kiEle = kiEle;
+	_kdEle = kdEle;
 	_servoMode = servoMode;
 
 	reset();
@@ -24,38 +27,76 @@ ServoControl::ServoMode ServoControl::servoMode()
 	return _servoMode;
 }
 
-void ServoControl::setKp(double kp)
+void ServoControl::setKpAzi(double kp)
 {
-	_kp = kp;
+	_kpAzi = kp;
 }
 
-void ServoControl::setKi(double ki)
+void ServoControl::setKiAzi(double ki)
 {
-	_ki = ki;
+	_kiAzi = ki;
 }
 
 
-void ServoControl::setKd(double kd)
+void ServoControl::setKdAzi(double kd)
 {
-	_kd = kd;
+	_kdAzi = kd;
+}
+
+
+void ServoControl::setKpEle(double kp)
+{
+	_kpEle = kp;
+}
+
+void ServoControl::setKiEle(double ki)
+{
+	_kiEle = ki;
+}
+
+
+void ServoControl::setKdEle(double kd)
+{
+	_kdEle = kd;
 }
 
 
 void ServoControl::reset()
 {
-	_offset = 0.0;
-	_error = 0.0;
-	_integral = 0.0;
-	_derivative = 0.0;
+	_offsetAzi = 0.0;
+	_errorAzi = 0.0;
+	_integralAzi = 0.0;
+	_derivativeAzi = 0.0;
+
+	_offsetEle = 0.0;
+	_errorEle = 0.0;
+	_integralEle = 0.0;
+	_derivativeEle = 0.0;
 
 	_lastMillis = -1;
 }
 
 
+double ServoControl::pidController(double y, double ysp, double& err, double& integral, double& derivative, double offset, double kp, double ki, double kd, double dt)
+{
+	double err_k = (ysp - y);
+	
+	derivative = (err_k - err) / dt;
+	err = err_k;
+	integral += (err_k * dt);
+
+	double P = kp * err_k;
+	double I = ki * integral;
+	double D = kd * derivative;
+
+	double U = saturate(P + I + D, -500, 500);
+
+	return U;
+}
+
+
 void ServoControl::targetMoved(int scartX, int scartY)
 {
-	Q_UNUSED(scartY); // BEH PER ORA
-
 	qint64 now = QDateTime::currentMSecsSinceEpoch();
 
 	if (_lastMillis < 0)
@@ -63,22 +104,15 @@ void ServoControl::targetMoved(int scartX, int scartY)
 		_lastMillis = now;
 		return;
 	}
-
 	double dt = static_cast<double>(now - _lastMillis) * 1e-3;
 
-	_derivative = (static_cast<double>(scartX) - _error) / dt;
-	_error = -static_cast<double>(scartX - _offset);
-	_integral += static_cast<double>(_error * dt);
+	double pidAzi = pidController(scartX, 0, _errorAzi, _integralAzi, _derivativeAzi, _offsetAzi, _kpAzi, _kiAzi, _kdEle, dt);
+	double pidEle = pidController(scartY, 0, _errorEle, _integralEle, _derivativeEle, _offsetEle, _kpEle, _kiAzi, _kdEle, dt);
 
-	double P = _kp * _error;
-	double I = _ki * _integral;
-	double D = _kd * _derivative;
-
-	double U = saturate(P + I + D, -500, 500);
-
-	quint16 servoCmd = 1500 + static_cast<quint16>(U);
+	quint16 servoCmdAzi = 1500 + static_cast<quint16>(pidAzi);
+	quint16 servoCmdEle = 1500 + static_cast<quint16>(pidEle);
 	// TODO : Tracker Elevation
-	emit updatedServo(static_cast<quint16>(_servoMode), servoCmd, 1500);
+	emit updatedServo(static_cast<quint16>(_servoMode), servoCmdAzi, servoCmdEle);
 }
 
 
@@ -107,8 +141,8 @@ void ServoControl::servoDispatch(quint16 servoAzi, quint16 servoEle)
 	}
 	else
 	{
-		// TODO : Tracker Elevation
-		_offset += toRange(servoAzi, 1000, 2000, -1, 1);
+		_offsetAzi += toRange(servoAzi, 1000, 2000, -1, 1);
+		_offsetEle += toRange(servoEle, 1000, 2000, -1, 1);
 	}
 }
 

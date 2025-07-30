@@ -4,12 +4,14 @@
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QTimer>
+#include <qevent.h>
 #include <opencv2/videoio/videoio.hpp>
 
 #include "VideoWindowOverlay.h"
 #include "RobotData.h"
 #include "VideoProcessing.h"
 #include "Tracker.h"
+#include "SharedMemoryStream.h"
 
 
 class VideoWindow : public QOpenGLWidget, protected QOpenGLFunctions {
@@ -61,6 +63,9 @@ private slots:
     void onTrackerIdle();
     void onTrackerCoastingFailure();
 
+protected:
+   void mousePressEvent(QMouseEvent* evt) override;
+
 private:
     QTimer _timer;         // Timer per aggiornare i frame
     cv::VideoCapture _cap; // Stream UDP
@@ -70,8 +75,11 @@ private:
     VideoWindowOverlay _overlay;
     VideoProcessing* _processing;
     Tracker* _tracker;
+    SharedMemoryStream* _yoloStream;
     int _lastWidth;
     int _lastHeight;
+    std::vector<SharedMemoryStream::Detection> _yoloDetections;
+    QMutex _frameMutex;
 
     void updateTexture(GLuint textureId, GLint internalformat, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
     void drawTexture(GLuint textureId);
